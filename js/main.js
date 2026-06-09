@@ -28,13 +28,6 @@ const resultGrid = document.getElementById("resultGrid");
 // metric 표 영역 DOM.
 const metricTable = document.getElementById("metricTable");
 
-// Matrix class 저장 변수.
-let Matrix = null;
-// SVD class 저장 변수.
-let SVDClass = null;
-// library 로딩 상태.
-let libraryReady = false;
-
 // 원본 이미지 객체.
 let sourceImage = null;
 // grayscale 행렬 A.
@@ -117,19 +110,14 @@ maxSizeInput.addEventListener("change", () => {
   statusDiv.textContent = "이미지 크기를 다시 적용했습니다. SVD 실행 버튼을 누르세요.";
 });
 
-// 슬라이더 변경 이벤트 등록.
+// 슬라이더 조작 중(실시간) 이벤트 등록.
 maxSizeSlider.addEventListener("input", () => {
-  // 슬라이더 값을 숫자 입력에 동기화.
-  maxSizeInput.value = maxSizeSlider.value;
-});
-
-// 슬라이더에서 손을 뗐을 때 이미지 재처리.
-maxSizeSlider.addEventListener("change", () => {
   // 슬라이더 값을 숫자 입력에 동기화.
   maxSizeInput.value = maxSizeSlider.value;
   // 이미지 없으면 종료.
   if (!sourceImage) return;
-  // 새 크기로 행렬 재생성.
+  
+  // 실시간으로 새 크기로 행렬 재생성 및 화면 갱신.
   drawInputImageAndMakeMatrix();
   // 복원 결과 삭제.
   resultGrid.innerHTML = "";
@@ -157,52 +145,7 @@ runButton.addEventListener("click", () => {
   }
 });
 
-// SVD library 로딩 함수.
-async function loadSVDLibrary() {
-  // import 예외 처리.
-  try {
-    // ml-matrix ES module import.
-    const ML = await import("https://cdn.jsdelivr.net/npm/ml-matrix@6.12.2/+esm");
 
-    // default export 대비.
-    const MLDefault = ML.default || {};
-
-    // Matrix class 찾기.
-    Matrix = ML.Matrix || MLDefault.Matrix;
-    // SVD class 찾기.
-    SVDClass =
-      ML.SingularValueDecomposition ||
-      ML.SVD ||
-      MLDefault.SingularValueDecomposition ||
-      MLDefault.SVD;
-
-    // class 존재 확인.
-    if (!Matrix || !SVDClass) {
-      // export 정보 출력.
-      console.log("ml-matrix module exports:", ML);
-      // 오류 발생.
-      throw new Error("ml-matrix module에서 Matrix 또는 SVD class를 찾지 못했습니다.");
-    }
-
-    // library 준비 완료.
-    libraryReady = true;
-    // 실행 버튼 갱신.
-    updateRunButton();
-    // 상태 메시지 갱신.
-    statusDiv.textContent = "SVD library 로딩 완료. 이미지를 선택하세요.";
-  } catch (error) {
-    // library 준비 실패.
-    libraryReady = false;
-    // 실행 버튼 갱신.
-    updateRunButton();
-    // 오류 콘솔 출력.
-    console.error(error);
-    // 오류 메시지 표시.
-    statusDiv.textContent =
-      "오류 발생: SVD library를 불러오지 못했습니다.\n" +
-      "인터넷 연결 또는 브라우저의 외부 module import 차단 여부를 확인해야 합니다.";
-  }
-}
 
 // 실행 버튼 갱신 함수.
 function updateRunButton() {
@@ -313,220 +256,140 @@ function drawInputImageAndMakeMatrix() {
 }
 
 // SVD 전체 실행 함수.
-function runSVD() {
-  // 행렬 존재 확인.
+async function runSVD() {
+  // SVD 계산 시작.
   if (!grayMatrix) {
-    // 이미지 미선택 오류.
-    throw new Error("먼저 이미지를 선택해야 합니다.");
+    statusDiv.textContent = "오류: 먼저 이미지를 업로드하세요.";
+    return;
   }
 
-  // library 준비 확인.
-  if (!libraryReady || !Matrix || !SVDClass) {
-    // library 미준비 오류.
-    throw new Error("SVD library가 아직 준비되지 않았습니다.");
-  }
+  // 로딩 UI 초기화
+  LoadingUI.init();
+  LoadingUI.setupCanvases(imageWidth, imageHeight, grayMatrix);
+  LoadingUI.setStatus("SVD 행렬 분해 중...");
+  LoadingUI.setKText("대기 중...");
 
-  // 이전 복원 결과 삭제.
+  // 계산 결과 초기화.
   resultGrid.innerHTML = "";
-  // 이전 표 삭제.
   metricTable.innerHTML = "";
-  // 계산 중 메시지.
-  statusDiv.textContent = "SVD 계산 중입니다. 이미지 크기가 크면 시간이 걸릴 수 있습니다.";
   // 중복 실행 방지.
   runButton.disabled = true;
 
-  // UI 갱신 시간 확보.
-  setTimeout(() => {
-    // 계산 예외 처리.
-    try {
-      // JS 배열을 Matrix로 변환.
-      const A = new Matrix(grayMatrix);
-      // SVD 계산.
-      const svd = new SVDClass(A, { autoTranspose: true });
+  // 로딩 오버레이 표시
+  LoadingUI.show();
 
-      // ① U = svd.leftSingularVectors (U는 m x m 또는 autoTranspose=true시 달라짐)
-      // ml-matrix SVD의 U, V 반환 형태 확인
-      // U: leftSingularVectors, V: rightSingularVectors, diagonal: singularValues
-      const U = svd.leftSingularVectors;
-      const V = svd.rightSingularVectors;
-      const singularValues = svd.diagonal;
+  // 브라우저가 위 UI 변경 사항을 화면에 그릴 시간을 줍니다.
+  await new Promise(resolve => setTimeout(resolve, 50));
 
-      // SVD 결과 확인.
-      if (!U || !V || !singularValues || singularValues.length === 0) {
-        // 비정상 결과 오류.
-        throw new Error("SVD 결과가 올바르지 않습니다.");
+  // 계산 예외 처리.
+  try {
+    // JS 배열을 Matrix로 변환.
+    const A = new Matrix(grayMatrix);
+    
+    // SVD 계산 시작 전, 수학적 과정을 시각적으로 보여주기 위한 Power Iteration 실행 (약 15회 반복)
+    LoadingUI.setStatus("행렬 분석 중 (지배적 특이벡터 탐색)...");
+    await simulatePowerIteration(grayMatrix, imageHeight, imageWidth, 15, async (iter, v, sigma, rank1Matrix) => {
+      await LoadingUI.onDecompIteration(iter, v, sigma, rank1Matrix);
+    });
+
+    // 진짜 연산 과정을 충분히 보여준 후, 전체 행렬 분해(Decomposition)를 백그라운드에서 한 번에 완료합니다.
+    LoadingUI.setStatus("전체 특이값 분해(SVD) 완료 중...");
+    await new Promise(resolve => setTimeout(resolve, 50)); // 렌더링 갱신 양보
+    // SVD 계산. (여기서 무거운 연산 발생)
+    const svd = new SVDClass(A, { autoTranspose: true });
+
+    // ① U = svd.leftSingularVectors
+    const U = svd.leftSingularVectors;
+    const V = svd.rightSingularVectors;
+    const singularValues = svd.diagonal;
+
+    // SVD 결과 확인.
+    if (!U || !V || !singularValues || singularValues.length === 0) {
+      throw new Error("SVD 결과가 올바르지 않습니다.");
+    }
+
+    // 상태 변경
+    LoadingUI.setStatus("행렬 복원 진행 중...");
+
+    // 가능한 최대 rank.
+    const maxRank = singularValues.length;
+    // 입력 k 목록 정리.
+    const kValues = parseKValues(kInput.value, maxRank);
+
+    // 전체 energy 계산.
+    const totalEnergy = singularValues.reduce((sum, s) => sum + s * s, 0);
+    // 원본 parameter 수.
+    const originalParams = imageHeight * imageWidth;
+    // metric 저장 배열.
+    const metrics = [];
+
+    // 각 k 처리 (비동기 루프로 순차적 렌더링 지원)
+    for (const k of kValues) {
+      LoadingUI.setKText(`Processing k = ${k}`);
+      
+      // 로그 패널에 구분선 추가
+      if (LoadingUI.dataLog) {
+        const divider = document.createElement("div");
+        divider.textContent = `--- [k = ${k} 계산 시작] ---`;
+        divider.style.color = "#00ffbb";
+        LoadingUI.dataLog.appendChild(divider);
       }
 
-      // 가능한 최대 rank.
-      const maxRank = singularValues.length;
-      // 입력 k 목록 정리.
-      const kValues = parseKValues(kInput.value, maxRank);
+      // 비동기 단위 복원 (한 줄씩 렌더링 콜백 전달)
+      const reconstructed = await reconstructByTruncatedSVDAsync(
+        U, singularValues, V, k, imageHeight, imageWidth,
+        (y, rowData) => LoadingUI.onRowCalculated(y, rowData)
+      );
 
-      // 전체 energy 계산.
-      const totalEnergy = singularValues.reduce((sum, s) => sum + s * s, 0);
-      // 원본 parameter 수.
-      const originalParams = imageHeight * imageWidth;
-      // metric 저장 배열.
-      const metrics = [];
+      // 보존 energy 계산.
+      const retainedEnergy = calcRetainedEnergy(singularValues, k, totalEnergy);
+      // 상대 error 계산.
+      const relativeError = calcRelativeError(grayMatrix, reconstructed);
 
-      // 각 k 처리.
-      for (const k of kValues) {
-        // rank-k 복원.
-        const reconstructed = reconstructByTruncatedSVD(U, singularValues, V, k, imageHeight, imageWidth);
+      // 압축 parameter 수.
+      const storedParams = k * (imageHeight + imageWidth + 1);
+      // 원본 대비 저장 비율.
+      const storedRatio = storedParams / originalParams;
+      // 절감 비율.
+      const savingRatio = 1 - storedRatio;
 
-        // 보존 energy 계산.
-        const retainedEnergy = calcRetainedEnergy(singularValues, k, totalEnergy);
-        // 상대 error 계산.
-        const relativeError = calcRelativeError(grayMatrix, reconstructed);
+      // metric 저장.
+      metrics.push({
+        k, retainedEnergy, relativeError, storedParams, storedRatio, savingRatio
+      });
 
-        // 압축 parameter 수.
-        const storedParams = k * (imageHeight + imageWidth + 1);
-        // 원본 대비 저장 비율.
-        const storedRatio = storedParams / originalParams;
-        // 절감 비율.
-        const savingRatio = 1 - storedRatio;
+      // 본문 결과 그리드에 복원 이미지 카드 추가.
+      addReconstructionCanvas(k, reconstructed, {
+        retainedEnergy, relativeError, storedRatio, savingRatio
+      });
 
-        // metric 저장.
-        metrics.push({
-          // rank 값.
-          k,
-          // 보존 energy.
-          retainedEnergy,
-          // 상대 error.
-          relativeError,
-          // 저장 parameter 수.
-          storedParams,
-          // 저장 비율.
-          storedRatio,
-          // 절감 비율.
-          savingRatio
-        });
-
-        // 복원 이미지 카드 추가.
-        addReconstructionCanvas(k, reconstructed, {
-          // 보존 energy 전달.
-          retainedEnergy,
-          // 상대 error 전달.
-          relativeError,
-          // 저장 비율 전달.
-          storedRatio,
-          // 절감 비율 전달.
-          savingRatio
-        });
-      }
-
-      // singular value 그래프 출력.
-      drawSingularValuePlot(singularValues);
-      // metric 그래프 출력.
-      drawMetricPlot(metrics);
-      // metric 표 출력.
-      renderMetricTable(metrics, originalParams);
-
-      // 완료 메시지 표시.
-      statusDiv.textContent =
-        `완료: 행렬 크기 ${imageHeight} x ${imageWidth}, 최대 rank ${maxRank}, 계산한 k = ${kValues.join(", ")}`;
-    } catch (error) {
-      // 오류 콘솔 출력.
-      console.error(error);
-      // 오류 메시지 표시.
-      statusDiv.textContent = "오류 발생: " + error.message;
-    } finally {
-      // 버튼 상태 복구.
-      updateRunButton();
+      // 렌더링된 화면을 사용자가 볼 수 있도록 살짝 대기
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
-  }, 50);
-}
 
-// k 입력값 파싱 함수.
-function parseKValues(text, maxRank) {
-  // 문자열을 숫자 배열로 변환.
-  const values = text
-    // 쉼표 기준 분리.
-    .split(",")
-    // 공백 제거 후 숫자 변환.
-    .map(v => Number(v.trim()))
-    // 양의 정수만 유지.
-    .filter(v => Number.isInteger(v) && v > 0)
-    // 최대 rank로 제한.
-    .map(v => Math.min(v, maxRank));
+    // singular value 그래프 출력.
+    drawSingularValuePlot(singularValues);
+    // metric 그래프 출력.
+    drawMetricPlot(metrics);
+    // metric 표 출력.
+    renderMetricTable(metrics, originalParams);
 
-  // 중복 제거와 오름차순 정렬.
-  const unique = [...new Set(values)].sort((a, b) => a - b);
-
-  // k 값 존재 확인.
-  if (unique.length === 0) {
-    // 입력 오류.
-    throw new Error("k 값을 1개 이상 입력해야 합니다. 예: 5,10,20,40");
+    // 완료 메시지 표시.
+    statusDiv.textContent =
+      `완료: 행렬 크기 ${imageHeight} x ${imageWidth}, 최대 rank ${maxRank}, 계산한 k = ${kValues.join(", ")}`;
+  } catch (error) {
+    // 오류 콘솔 출력.
+    console.error(error);
+    // 오류 메시지 표시.
+    statusDiv.textContent = "오류 발생: " + error.message;
+  } finally {
+    // 버튼 상태 복구.
+    updateRunButton();
+    // 1초 뒤 로딩 오버레이 숨김 (최종 결과 확인 시간 제공)
+    setTimeout(() => {
+      LoadingUI.hide();
+    }, 1000);
   }
-
-  // 정리된 k 배열 반환.
-  return unique;
-}
-
-// Truncated SVD 복원 함수.
-function reconstructByTruncatedSVD(U, singularValues, V, k, rows, cols) {
-  // 출력 행렬 초기화.
-  const output = Array.from({ length: rows }, () => Array(cols).fill(0));
-
-  // 각 행 순회.
-  for (let y = 0; y < rows; y++) {
-    // 각 열 순회.
-    for (let x = 0; x < cols; x++) {
-      // pixel 밝기 누적값.
-      let value = 0;
-
-      // 상위 k개 성분 합산.
-      for (let r = 0; r < k; r++) {
-        // U[:,r] * sigma[r] * V[:,r] 항 누적.
-        value += U.get(y, r) * singularValues[r] * V.get(x, r);
-      }
-
-      // 0~255 범위로 저장.
-      output[y][x] = clamp(value, 0, 255);
-    }
-  }
-
-  // 복원 행렬 반환.
-  return output;
-}
-
-// retained energy 계산 함수.
-function calcRetainedEnergy(singularValues, k, totalEnergy) {
-  // 부분 energy 초기화.
-  let partial = 0;
-
-  // 상위 k개 singular value 사용.
-  for (let i = 0; i < k; i++) {
-    // sigma_i 제곱 누적.
-    partial += singularValues[i] * singularValues[i];
-  }
-
-  // 전체 대비 비율 반환.
-  return partial / totalEnergy;
-}
-
-// Frobenius norm 기반 relative error 계산.
-function calcRelativeError(original, reconstructed) {
-  // 오차 제곱합.
-  let numerator = 0;
-  // 원본 제곱합.
-  let denominator = 0;
-
-  // 모든 행 순회.
-  for (let y = 0; y < original.length; y++) {
-    // 모든 열 순회.
-    for (let x = 0; x < original[0].length; x++) {
-      // pixel 오차.
-      const diff = original[y][x] - reconstructed[y][x];
-      // 오차 제곱 누적.
-      numerator += diff * diff;
-      // 원본 제곱 누적.
-      denominator += original[y][x] * original[y][x];
-    }
-  }
-
-  // 상대 error 반환.
-  return Math.sqrt(numerator / denominator);
 }
 
 // 복원 결과 Canvas 카드 추가 함수.
@@ -625,7 +488,7 @@ function drawSingularValuePlot(singularValues) {
   const maxY = Math.max(...values, 1e-12);
 
   // 축 그리기.
-  drawAxes(ctx, margin, w, h, "Index", "log10(σ + 1)");
+  drawAxes(ctx, margin, w, h, "Index", "log10(σ + 1)", "#1a1a1a");
 
   // 선 그리기 시작.
   ctx.beginPath();
@@ -648,7 +511,7 @@ function drawSingularValuePlot(singularValues) {
   }
 
   // 선 색상 설정.
-  ctx.strokeStyle = "#222";
+  ctx.strokeStyle = "#00ffbb";
   // 선 두께 설정.
   ctx.lineWidth = 2;
   // 선 출력.
@@ -678,10 +541,10 @@ function drawMetricPlot(metrics) {
   const maxK = Math.max(...metrics.map(m => m.k), 1);
 
   // 축 그리기.
-  drawAxes(ctx, margin, w, h, "k", "ratio");
+  drawAxes(ctx, margin, w, h, "k", "ratio", "#1a1a1a");
 
   // 실선 색상 설정.
-  ctx.strokeStyle = "#222";
+  ctx.strokeStyle = "#00ffbb";
   // 실선 시작.
   ctx.beginPath();
   // retained energy 점 순회.
@@ -702,7 +565,7 @@ function drawMetricPlot(metrics) {
   ctx.stroke();
 
   // 점선 색상 설정.
-  ctx.strokeStyle = "#222";
+  ctx.strokeStyle = "#60ffc2";
   // 점선 패턴 설정.
   ctx.setLineDash([5, 5]);
   // 점선 시작.
@@ -725,24 +588,30 @@ function drawMetricPlot(metrics) {
   ctx.setLineDash([]);
 
   // 범례 색상 설정.
-  ctx.fillStyle = "#333";
+  ctx.fillStyle = "#ccc";
   // 범례 글꼴 설정.
-  ctx.font = "13px Arial";
+  ctx.font = "13px Roboto, Arial";
   // retained energy 범례.
-  ctx.fillText("solid: retained energy", margin.left + 12, margin.top + 18);
+  ctx.fillText("── retained energy", margin.left + 12, margin.top + 18);
   // relative error 범례.
-  ctx.fillText("dashed: relative error", margin.left + 12, margin.top + 36);
+  ctx.fillText("╌╌ relative error", margin.left + 12, margin.top + 36);
 }
 
 // 그래프 축 출력 함수.
-function drawAxes(ctx, margin, w, h, xLabel, yLabel) {
+function drawAxes(ctx, margin, w, h, xLabel, yLabel, bgColor) {
+  // 배경색이 지정되면 배경 채우기.
+  if (bgColor) {
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, w, h);
+  }
+
   // 현재 drawing 상태 저장.
   ctx.save();
 
   // 축 선 색상.
-  ctx.strokeStyle = "#333";
+  ctx.strokeStyle = "#555";
   // 글자 색상.
-  ctx.fillStyle = "#333";
+  ctx.fillStyle = "#ccc";
   // 축 선 두께.
   ctx.lineWidth = 1;
 
@@ -769,7 +638,7 @@ function drawAxes(ctx, margin, w, h, xLabel, yLabel) {
   ctx.stroke();
 
   // 라벨 글꼴.
-  ctx.font = "13px Arial";
+  ctx.font = "13px Roboto, Arial";
   // x축 라벨 출력.
   ctx.fillText(xLabel, (x0 + x1) / 2, h - 12);
 
@@ -785,7 +654,7 @@ function drawAxes(ctx, margin, w, h, xLabel, yLabel) {
   ctx.restore();
 
   // grid 선 색상.
-  ctx.strokeStyle = "#e0e0e0";
+  ctx.strokeStyle = "#333";
   // grid 4개 출력.
   for (let i = 1; i <= 4; i++) {
     // grid y 좌표.
@@ -808,9 +677,9 @@ function drawAxes(ctx, margin, w, h, xLabel, yLabel) {
 function clearCanvas(ctx, canvas) {
   // 기존 그림 삭제.
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  // 배경색 설정.
-  ctx.fillStyle = "#ffffff";
-  // 흰색 배경 채우기.
+  // 다크 배경색 설정.
+  ctx.fillStyle = "#1a1a1a";
+  // 배경 채우기.
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
@@ -862,3 +731,4 @@ function clamp(value, min, max) {
   // min~max 범위로 제한.
   return Math.max(min, Math.min(max, value));
 }
+
