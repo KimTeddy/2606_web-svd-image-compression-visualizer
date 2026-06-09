@@ -496,9 +496,11 @@ function drawGrayMatrixToCanvas(canvas, matrix) {
 // 고해상도(High DPI) 캔버스 설정 함수.
 function setupHighDPICanvas(canvas, logicalWidth, logicalHeight) {
   const dpr = window.devicePixelRatio || 1;
-  // CSS 논리적 크기
-  canvas.style.width = logicalWidth + "px";
-  canvas.style.height = logicalHeight + "px";
+  // CSS 논리적 크기 (화면 축소 시 찌그러짐 방지)
+  canvas.style.maxWidth = logicalWidth + "px";
+  canvas.style.width = "100%";
+  canvas.style.height = "auto";
+  
   // 실제 픽셀 해상도
   canvas.width = logicalWidth * dpr;
   canvas.height = logicalHeight * dpr;
@@ -511,8 +513,22 @@ function setupHighDPICanvas(canvas, logicalWidth, logicalHeight) {
 
 // singular value 그래프 출력.
 function drawSingularValuePlot(singularValues) {
-  const w = 520;
-  const h = 280;
+  let w = 520;
+  let h = 280;
+  // 원본 이미지 비율에 맞춰 그래프 비율 조정
+  if (typeof sourceImage !== 'undefined' && sourceImage && sourceImage.width > 0) {
+    const ratio = sourceImage.width / sourceImage.height;
+    if (ratio >= 1) {
+      w = 520;
+      h = Math.round(520 / ratio);
+    } else {
+      h = 520;
+      w = Math.round(520 * ratio);
+    }
+    // 너무 찌그러지지 않도록 최소 크기 제한
+    w = Math.max(300, w);
+    h = Math.max(200, h);
+  }
   // 고해상도 캔버스 설정 및 context 얻기
   const ctx = setupHighDPICanvas(singularCanvas, w, h);
   
@@ -565,8 +581,22 @@ function drawSingularValuePlot(singularValues) {
 
 // metric 그래프 출력.
 function drawMetricPlot(metrics) {
-  const w = 520;
-  const h = 280;
+  let w = 520;
+  let h = 280;
+  // 원본 이미지 비율에 맞춰 그래프 비율 조정
+  if (typeof sourceImage !== 'undefined' && sourceImage && sourceImage.width > 0) {
+    const ratio = sourceImage.width / sourceImage.height;
+    if (ratio >= 1) {
+      w = 520;
+      h = Math.round(520 / ratio);
+    } else {
+      h = 520;
+      w = Math.round(520 * ratio);
+    }
+    // 너무 찌그러지지 않도록 최소 크기 제한
+    w = Math.max(300, w);
+    h = Math.max(200, h);
+  }
   // 고해상도 캔버스 설정 및 context 얻기
   const ctx = setupHighDPICanvas(metricCanvas, w, h);
   

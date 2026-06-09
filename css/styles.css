@@ -102,6 +102,16 @@ input[type="text"] {
   background: #2c2c2c;
   /* 입력 글자색 */
   color: #e0e0e0;
+  /* 삐져나옴 방지 */
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 긴 파일명이 화면을 뚫지 않도록 말줄임표 처리 */
+input[type="file"] {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 /* k 입력창 */
@@ -231,8 +241,8 @@ button:disabled {
 canvas {
   /* 블록 요소 */
   display: block;
-  /* 글자 길이에 구애받지 않고 무조건 최소 200px 이상으로 보이도록 강제 (모바일 너비인 320px 안에도 쏙 들어갑니다) */
-  min-width: 200px;
+  /* 가로 너비를 부모 요소(카드)에 맞춤 */
+  width: 100%;
   /* 크기가 조정될 때 비율이 깨지지 않도록 높이 자동 조절 */
   height: auto;
   /* 최대 너비 제한 */
@@ -297,14 +307,15 @@ canvas {
 
 /* 표 전체 */
 table {
-  /* 표 너비 */
+  /* 표 너비 최적화 */
   width: 100%;
+  max-width: 800px;
+  /* 왼쪽 정렬 및 여백 */
+  margin: 20px 0;
   /* 테두리 합치기 */
   border-collapse: collapse;
   /* 표 배경 */
   background: #2c2c2c;
-  /* 위쪽 여백 */
-  margin-top: 10px;
   /* 줄바꿈 방지 */
   white-space: nowrap;
 }
@@ -313,22 +324,14 @@ table {
 th, td {
   /* 셀 테두리 */
   border: 1px solid #444;
-  /* 셀 여백 */
-  padding: 8px;
-  /* 오른쪽 정렬 */
-  text-align: right;
+  /* 셀 여백 넉넉하게 추가 */
+  padding: 12px 16px;
+  /* 모두 왼쪽 정렬해서 깔끔하게 표시 */
+  text-align: left;
   /* 글자 크기 */
   font-size: 14px;
   /* 글자색 */
   color: #e0e0e0;
-}
-
-/* 첫 번째 열 제목 */
-th:first-child,
-/* 첫 번째 열 값 */
-td:first-child {
-  /* 중앙 정렬 */
-  text-align: center;
 }
 
 /* 표 헤더 */
@@ -466,8 +469,13 @@ th {
   /* 내부 요소 중앙 정렬 */
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
+  /* 안쪽 여백 설정 (반응형) */
+  padding: 4vh 4vw;
+  box-sizing: border-box;
+  /* 스크롤 발생 방지 */
+  overflow: hidden;
+  justify-content: center;
   /* 항상 제일 위에 표시 */
   z-index: 9999;
   /* 기본적으로 숨김 상태 */
@@ -485,19 +493,23 @@ th {
 
 .spinner-wrapper {
   position: relative;
-  /* 애니메이션 링의 전체 크기 */
-  width: 180px;
-  height: 180px;
-  margin-bottom: 30px;
+  /* 애니메이션 링 반응형 크기 */
+  width: 15vh;
+  height: 15vh;
+  min-width: 100px;
+  min-height: 100px;
+  max-width: 180px;
+  max-height: 180px;
+  margin-bottom: 2vh;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 .loading-icon {
-  /* 아이콘(이미지) 크기 */
-  width: 140px;
-  height: 140px;
+  /* 아이콘(이미지) 크기 - 링 크기에 비례 */
+  width: 75%;
+  height: 75%;
   /* 이미지를 완벽한 원형으로 둥글게 자르기 */
   border-radius: 50%;
   /* 아이콘은 제자리에서 은은하게 숨쉬는 효과 */
@@ -563,7 +575,10 @@ th {
   gap: 40px;
   width: 100%;
   max-width: 1200px;
-  padding: 0 24px;
+  /* 화면에 넘치지 않도록 조절 */
+  flex: 1;
+  min-height: 0;
+  padding: 0;
   flex-wrap: wrap; /* 모바일 등 좁은 화면 대비 */
 }
 
@@ -581,8 +596,12 @@ th {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 300px;
-  max-width: 100%;
+  /* 반응형 너비 및 최대 높이 */
+  width: 25vw;
+  min-width: 200px;
+  max-width: 300px;
+  max-height: 100%;
+  box-sizing: border-box;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
@@ -600,14 +619,22 @@ th {
   border-radius: 4px;
   overflow: hidden;
   background: #1a1a1a;
-  min-height: 150px;
+  /* 남은 세로 공간 모두 채우고 가운데 정렬 */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .scanner-wrapper canvas {
   display: block;
-  width: 100%;
+  /* 컨테이너 안에 왜곡 없이 딱 맞게 쏙 들어가게 조절 */
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
   height: auto;
-  min-width: 0;
+  object-fit: contain;
   image-rendering: auto;
 }
 
@@ -654,8 +681,11 @@ th {
 .loading-data-log {
   width: 100%;
   max-width: 1000px;
-  height: 150px;
-  margin-top: 30px;
+  /* 세로 비율 반응형 적용 */
+  height: 20vh;
+  min-height: 80px;
+  max-height: 150px;
+  margin-top: 3vh;
   background: #0a0a0a;
   border: 1px solid #333;
   border-radius: 6px;
@@ -672,4 +702,112 @@ th {
 .loading-data-log div {
   margin-bottom: 4px;
   opacity: 0.8;
+}
+/* ===== 반응형 오버레이 최적화 ===== */
+/* 1. 모바일 기기 (세로로 긴 화면 또는 가로폭이 좁은 화면) */
+@media (max-width: 800px) {
+  .loading-content-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    max-height: 50vh;
+    position: relative; /* 중앙 스피너의 절대 위치 기준 */
+  }
+  
+  .loading-side-card {
+    width: 48%; /* 화면을 반반씩 차지 */
+    max-width: none;
+    flex: 1;
+    min-height: 0;
+    padding: 6px;
+    margin: 0;
+    justify-content: center;
+  }
+  
+  /* 로고 및 진행 상태 텍스트: 정중앙 (절대 위치) */
+  .loading-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 50;
+    background: radial-gradient(circle, rgba(18,18,18,0.95) 40%, transparent 80%);
+    padding: 10px;
+    width: 140px; 
+  }
+  
+  .spinner-wrapper {
+    margin: 0 0 8px 0;
+    width: 12vw;
+    height: 12vw;
+    min-width: 50px;
+    min-height: 50px;
+    max-height: 80px;
+    max-width: 80px;
+  }
+  
+  .loading-overlay p {
+    font-size: 13px; 
+    text-align: center;
+    white-space: nowrap;
+  }
+  
+  .loading-card-title {
+    margin-bottom: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  
+  .loading-data-log {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    max-height: 25vh;
+    margin-top: 2vh;
+    font-size: 11px;
+    padding: 8px;
+  }
+}
+
+/* 2. 가로로 넓지만 세로가 극단적으로 짧은 화면 (PC 브라우저 가로 모드 등) */
+@media (max-height: 700px) and (min-width: 801px) {
+  .loading-overlay {
+    padding: 2vh 2vw;
+  }
+  
+  .loading-content-row {
+    gap: 2vw;
+    flex: 1;
+    min-height: 0;
+  }
+  
+  .loading-side-card {
+    padding: 8px;
+    flex: 1;
+    min-height: 0;
+  }
+  
+  .loading-card-title {
+    margin-bottom: 4px;
+    font-size: 13px;
+  }
+  
+  .spinner-wrapper {
+    width: 15vh;
+    height: 15vh;
+    min-width: 60px;
+    min-height: 60px;
+  }
+  
+  .loading-data-log {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    max-height: 20vh;
+    margin-top: 1vh;
+  }
 }
