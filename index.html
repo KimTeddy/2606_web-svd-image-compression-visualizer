@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SVD Image Compression Visualizer</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      background: #f5f6f8;
+      color: #222;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+    }
+
+    .subtitle {
+      margin: 0 0 20px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+    }
+
+    label {
+      font-weight: 600;
+    }
+
+    input[type="file"],
+    input[type="number"],
+    input[type="text"] {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    input[type="text"] {
+      width: 170px;
+    }
+
+    button {
+      padding: 9px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #222;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 12px;
+      color: #444;
+      line-height: 1.5;
+      white-space: pre-line;
+    }
+
+    .canvas-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+    }
+
+    .canvas-card {
+      background: #fafafa;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .canvas-card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      border: 1px solid #ccc;
+      background: #fff;
+      image-rendering: auto;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .result-card {
+      background: #fafafa;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .result-card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .result-card p {
+      margin: 8px 0 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #555;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: right;
+      font-size: 14px;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: center;
+    }
+
+    th {
+      background: #f0f0f0;
+    }
+
+    .note {
+      color: #666;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>SVD Image Compression Visualizer</h1>
+  <p class="subtitle">
+    이미지를 grayscale 행렬 A로 변환한 뒤, SVD로 분해하고 상위 k개의 singular value만 사용해 복원합니다.
+  </p>
+
+  <section class="panel">
+    <div class="controls">
+      <label>
+        이미지 선택:
+        <input id="imageInput" type="file" accept="image/*" />
+      </label>
+
+      <label>
+        최대 크기(px):
+        <input id="maxSizeInput" type="number" value="160" min="40" max="400" step="10" />
+      </label>
+
+      <label>
+        k 값들:
+        <input id="kInput" type="text" value="5,10,20,40,80" />
+      </label>
+
+      <button id="runButton" disabled>SVD 실행</button>
+    </div>
+
+    <div id="status" class="status">
+      SVD library를 불러오는 중입니다.
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>1. 입력 이미지와 grayscale 행렬</h2>
+    <div class="canvas-row">
+      <div class="canvas-card">
+        <h3>Original</h3>
+        <canvas id="originalCanvas"></canvas>
+      </div>
+
+      <div class="canvas-card">
+        <h3>Grayscale Matrix A</h3>
+        <canvas id="grayCanvas"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>2. Truncated SVD 복원 결과</h2>
+    <div id="resultGrid" class="result-grid"></div>
+  </section>
+
+  <section class="panel">
+    <h2>3. 정량 분석</h2>
+
+    <div class="canvas-row">
+      <div class="canvas-card">
+        <h3>Singular value spectrum</h3>
+        <canvas id="singularCanvas" width="520" height="280"></canvas>
+      </div>
+
+      <div class="canvas-card">
+        <h3>k에 따른 retained energy / error</h3>
+        <canvas id="metricCanvas" width="520" height="280"></canvas>
+      </div>
+    </div>
+
+    <div id="metricTable"></div>
+
+    <p class="note">
+      Relative error는 Frobenius norm 기준입니다.
+      압축 저장량은 U_k, Σ_k, V_k를 저장한다고 보고 k(m+n+1)개 parameter로 계산했습니다.
+    </p>
+  </section>
+
+  <script type="module">
+    const imageInput = document.getElementById("imageInput");
+    const maxSizeInput = document.getElementById("maxSizeInput");
+    const kInput = document.getElementById("kInput");
+    const runButton = document.getElementById("runButton");
+    const statusDiv = document.getElementById("status");
+
+    const originalCanvas = document.getElementById("originalCanvas");
+    const grayCanvas = document.getElementById("grayCanvas");
+    const singularCanvas = document.getElementById("singularCanvas");
+    const metricCanvas = document.getElementById("metricCanvas");
+
+    const resultGrid = document.getElementById("resultGrid");
+    const metricTable = document.getElementById("metricTable");
+
+    let Matrix = null;
+    let SVDClass = null;
+    let libraryReady = false;
+
+    let sourceImage = null;
+    let grayMatrix = null;
+    let imageWidth = 0;
+    let imageHeight = 0;
+
+    await loadSVDLibrary();
+
+    imageInput.addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      sourceImage = await loadImageFromFile(file);
+      drawInputImageAndMakeMatrix();
+      updateRunButton();
+
+      if (libraryReady) {
+        statusDiv.textContent = "이미지를 불러왔습니다. SVD 실행 버튼을 누르세요.";
+      }
+    });
+
+    maxSizeInput.addEventListener("change", () => {
+      if (!sourceImage) return;
+      drawInputImageAndMakeMatrix();
+      resultGrid.innerHTML = "";
+      metricTable.innerHTML = "";
+      clearCanvas(singularCanvas.getContext("2d"), singularCanvas);
+      clearCanvas(metricCanvas.getContext("2d"), metricCanvas);
+      statusDiv.textContent = "이미지 크기를 다시 적용했습니다. SVD 실행 버튼을 누르세요.";
+    });
+
+    runButton.addEventListener("click", () => {
+      try {
+        runSVD();
+      } catch (error) {
+        console.error(error);
+        statusDiv.textContent = "오류 발생: " + error.message;
+      }
+    });
+
+    async function loadSVDLibrary() {
+      try {
+        const ML = await import("https://cdn.jsdelivr.net/npm/ml-matrix@6.12.2/+esm");
+
+        const MLDefault = ML.default || {};
+
+        Matrix = ML.Matrix || MLDefault.Matrix;
+        SVDClass =
+          ML.SingularValueDecomposition ||
+          ML.SVD ||
+          MLDefault.SingularValueDecomposition ||
+          MLDefault.SVD;
+
+        if (!Matrix || !SVDClass) {
+          console.log("ml-matrix module exports:", ML);
+          throw new Error("ml-matrix module에서 Matrix 또는 SVD class를 찾지 못했습니다.");
+        }
+
+        libraryReady = true;
+        updateRunButton();
+        statusDiv.textContent = "SVD library 로딩 완료. 이미지를 선택하세요.";
+      } catch (error) {
+        libraryReady = false;
+        updateRunButton();
+        console.error(error);
+        statusDiv.textContent =
+          "오류 발생: SVD library를 불러오지 못했습니다.\n" +
+          "인터넷 연결 또는 브라우저의 외부 module import 차단 여부를 확인해야 합니다.";
+      }
+    }
+
+    function updateRunButton() {
+      runButton.disabled = !(libraryReady && grayMatrix);
+    }
+
+    function loadImageFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          resolve(img);
+        };
+
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error("이미지를 불러오지 못했습니다."));
+        };
+
+        img.src = url;
+      });
+    }
+
+    function drawInputImageAndMakeMatrix() {
+      const maxSize = Number(maxSizeInput.value);
+      const scale = Math.min(maxSize / sourceImage.width, maxSize / sourceImage.height, 1);
+
+      imageWidth = Math.max(1, Math.round(sourceImage.width * scale));
+      imageHeight = Math.max(1, Math.round(sourceImage.height * scale));
+
+      originalCanvas.width = imageWidth;
+      originalCanvas.height = imageHeight;
+      grayCanvas.width = imageWidth;
+      grayCanvas.height = imageHeight;
+
+      const originalCtx = originalCanvas.getContext("2d");
+      originalCtx.drawImage(sourceImage, 0, 0, imageWidth, imageHeight);
+
+      const imageData = originalCtx.getImageData(0, 0, imageWidth, imageHeight);
+      const pixels = imageData.data;
+
+      grayMatrix = Array.from({ length: imageHeight }, () => Array(imageWidth).fill(0));
+
+      const grayImageData = originalCtx.createImageData(imageWidth, imageHeight);
+
+      for (let y = 0; y < imageHeight; y++) {
+        for (let x = 0; x < imageWidth; x++) {
+          const idx = (y * imageWidth + x) * 4;
+
+          const r = pixels[idx];
+          const g = pixels[idx + 1];
+          const b = pixels[idx + 2];
+
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          grayMatrix[y][x] = gray;
+
+          grayImageData.data[idx] = gray;
+          grayImageData.data[idx + 1] = gray;
+          grayImageData.data[idx + 2] = gray;
+          grayImageData.data[idx + 3] = 255;
+        }
+      }
+
+      grayCanvas.getContext("2d").putImageData(grayImageData, 0, 0);
+    }
+
+    function runSVD() {
+      if (!grayMatrix) {
+        throw new Error("먼저 이미지를 선택해야 합니다.");
+      }
+
+      if (!libraryReady || !Matrix || !SVDClass) {
+        throw new Error("SVD library가 아직 준비되지 않았습니다.");
+      }
+
+      resultGrid.innerHTML = "";
+      metricTable.innerHTML = "";
+      statusDiv.textContent = "SVD 계산 중입니다. 이미지 크기가 크면 시간이 걸릴 수 있습니다.";
+      runButton.disabled = true;
+
+      setTimeout(() => {
+        try {
+          const A = new Matrix(grayMatrix);
+          const svd = new SVDClass(A, { autoTranspose: true });
+
+          const U = svd.leftSingularVectors;
+          const V = svd.rightSingularVectors;
+          const singularValues = svd.diagonal;
+
+          if (!U || !V || !singularValues || singularValues.length === 0) {
+            throw new Error("SVD 결과가 올바르지 않습니다.");
+          }
+
+          const maxRank = singularValues.length;
+          const kValues = parseKValues(kInput.value, maxRank);
+
+          const totalEnergy = singularValues.reduce((sum, s) => sum + s * s, 0);
+          const originalParams = imageHeight * imageWidth;
+          const metrics = [];
+
+          for (const k of kValues) {
+            const reconstructed = reconstructByTruncatedSVD(U, singularValues, V, k, imageHeight, imageWidth);
+
+            const retainedEnergy = calcRetainedEnergy(singularValues, k, totalEnergy);
+            const relativeError = calcRelativeError(grayMatrix, reconstructed);
+
+            const storedParams = k * (imageHeight + imageWidth + 1);
+            const storedRatio = storedParams / originalParams;
+            const savingRatio = 1 - storedRatio;
+
+            metrics.push({
+              k,
+              retainedEnergy,
+              relativeError,
+              storedParams,
+              storedRatio,
+              savingRatio
+            });
+
+            addReconstructionCanvas(k, reconstructed, {
+              retainedEnergy,
+              relativeError,
+              storedRatio,
+              savingRatio
+            });
+          }
+
+          drawSingularValuePlot(singularValues);
+          drawMetricPlot(metrics);
+          renderMetricTable(metrics, originalParams);
+
+          statusDiv.textContent =
+            `완료: 행렬 크기 ${imageHeight} x ${imageWidth}, 최대 rank ${maxRank}, 계산한 k = ${kValues.join(", ")}`;
+        } catch (error) {
+          console.error(error);
+          statusDiv.textContent = "오류 발생: " + error.message;
+        } finally {
+          updateRunButton();
+        }
+      }, 50);
+    }
+
+    function parseKValues(text, maxRank) {
+      const values = text
+        .split(",")
+        .map(v => Number(v.trim()))
+        .filter(v => Number.isInteger(v) && v > 0)
+        .map(v => Math.min(v, maxRank));
+
+      const unique = [...new Set(values)].sort((a, b) => a - b);
+
+      if (unique.length === 0) {
+        throw new Error("k 값을 1개 이상 입력해야 합니다. 예: 5,10,20,40");
+      }
+
+      return unique;
+    }
+
+    function reconstructByTruncatedSVD(U, singularValues, V, k, rows, cols) {
+      const output = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          let value = 0;
+
+          for (let r = 0; r < k; r++) {
+            value += U.get(y, r) * singularValues[r] * V.get(x, r);
+          }
+
+          output[y][x] = clamp(value, 0, 255);
+        }
+      }
+
+      return output;
+    }
+
+    function calcRetainedEnergy(singularValues, k, totalEnergy) {
+      let partial = 0;
+
+      for (let i = 0; i < k; i++) {
+        partial += singularValues[i] * singularValues[i];
+      }
+
+      return partial / totalEnergy;
+    }
+
+    function calcRelativeError(original, reconstructed) {
+      let numerator = 0;
+      let denominator = 0;
+
+      for (let y = 0; y < original.length; y++) {
+        for (let x = 0; x < original[0].length; x++) {
+          const diff = original[y][x] - reconstructed[y][x];
+          numerator += diff * diff;
+          denominator += original[y][x] * original[y][x];
+        }
+      }
+
+      return Math.sqrt(numerator / denominator);
+    }
+
+    function addReconstructionCanvas(k, matrix, metric) {
+      const card = document.createElement("div");
+      card.className = "result-card";
+
+      const title = document.createElement("h3");
+      title.textContent = `Rank k = ${k}`;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = imageWidth;
+      canvas.height = imageHeight;
+
+      drawGrayMatrixToCanvas(canvas, matrix);
+
+      const desc = document.createElement("p");
+      desc.innerHTML =
+        `Retained energy: ${(metric.retainedEnergy * 100).toFixed(2)}%<br>` +
+        `Relative error: ${(metric.relativeError * 100).toFixed(2)}%<br>` +
+        `Stored / Original: ${(metric.storedRatio * 100).toFixed(2)}%`;
+
+      card.appendChild(title);
+      card.appendChild(canvas);
+      card.appendChild(desc);
+      resultGrid.appendChild(card);
+    }
+
+    function drawGrayMatrixToCanvas(canvas, matrix) {
+      const ctx = canvas.getContext("2d");
+      const imageData = ctx.createImageData(canvas.width, canvas.height);
+
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          const idx = (y * canvas.width + x) * 4;
+          const gray = clamp(matrix[y][x], 0, 255);
+
+          imageData.data[idx] = gray;
+          imageData.data[idx + 1] = gray;
+          imageData.data[idx + 2] = gray;
+          imageData.data[idx + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    function drawSingularValuePlot(singularValues) {
+      const ctx = singularCanvas.getContext("2d");
+      clearCanvas(ctx, singularCanvas);
+
+      const margin = { left: 56, right: 20, top: 20, bottom: 42 };
+      const w = singularCanvas.width;
+      const h = singularCanvas.height;
+
+      const plotW = w - margin.left - margin.right;
+      const plotH = h - margin.top - margin.bottom;
+
+      const values = singularValues.map(v => Math.log10(v + 1));
+      const maxY = Math.max(...values, 1e-12);
+
+      drawAxes(ctx, margin, w, h, "Index", "log10(σ + 1)");
+
+      ctx.beginPath();
+
+      for (let i = 0; i < values.length; i++) {
+        const x = margin.left + (i / Math.max(1, values.length - 1)) * plotW;
+        const y = margin.top + plotH - (values[i] / maxY) * plotH;
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+
+      ctx.strokeStyle = "#222";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    function drawMetricPlot(metrics) {
+      const ctx = metricCanvas.getContext("2d");
+      clearCanvas(ctx, metricCanvas);
+
+      const margin = { left: 56, right: 20, top: 20, bottom: 42 };
+      const w = metricCanvas.width;
+      const h = metricCanvas.height;
+
+      const plotW = w - margin.left - margin.right;
+      const plotH = h - margin.top - margin.bottom;
+
+      const maxK = Math.max(...metrics.map(m => m.k), 1);
+
+      drawAxes(ctx, margin, w, h, "k", "ratio");
+
+      ctx.strokeStyle = "#222";
+      ctx.beginPath();
+      metrics.forEach((m, idx) => {
+        const x = margin.left + (m.k / maxK) * plotW;
+        const y = margin.top + plotH - m.retainedEnergy * plotH;
+
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.strokeStyle = "#222";
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      metrics.forEach((m, idx) => {
+        const x = margin.left + (m.k / maxK) * plotW;
+        const y = margin.top + plotH - m.relativeError * plotH;
+
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "#333";
+      ctx.font = "13px Arial";
+      ctx.fillText("solid: retained energy", margin.left + 12, margin.top + 18);
+      ctx.fillText("dashed: relative error", margin.left + 12, margin.top + 36);
+    }
+
+    function drawAxes(ctx, margin, w, h, xLabel, yLabel) {
+      ctx.save();
+
+      ctx.strokeStyle = "#333";
+      ctx.fillStyle = "#333";
+      ctx.lineWidth = 1;
+
+      const x0 = margin.left;
+      const y0 = h - margin.bottom;
+      const x1 = w - margin.right;
+      const y1 = margin.top;
+
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y0);
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x0, y1);
+      ctx.stroke();
+
+      ctx.font = "13px Arial";
+      ctx.fillText(xLabel, (x0 + x1) / 2, h - 12);
+
+      ctx.save();
+      ctx.translate(14, (y0 + y1) / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(yLabel, 0, 0);
+      ctx.restore();
+
+      ctx.strokeStyle = "#e0e0e0";
+      for (let i = 1; i <= 4; i++) {
+        const y = y0 - ((y0 - y1) * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(x0, y);
+        ctx.lineTo(x1, y);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function clearCanvas(ctx, canvas) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function renderMetricTable(metrics, originalParams) {
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th>k</th>
+              <th>Retained Energy</th>
+              <th>Relative Error</th>
+              <th>Stored Params</th>
+              <th>Stored / Original</th>
+              <th>Saving Ratio</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      for (const m of metrics) {
+        html += `
+          <tr>
+            <td>${m.k}</td>
+            <td>${(m.retainedEnergy * 100).toFixed(2)}%</td>
+            <td>${(m.relativeError * 100).toFixed(2)}%</td>
+            <td>${m.storedParams.toLocaleString()} / ${originalParams.toLocaleString()}</td>
+            <td>${(m.storedRatio * 100).toFixed(2)}%</td>
+            <td>${(m.savingRatio * 100).toFixed(2)}%</td>
+          </tr>
+        `;
+      }
+
+      html += `
+          </tbody>
+        </table>
+      `;
+
+      metricTable.innerHTML = html;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+  </script>
+</body>
+</html>
