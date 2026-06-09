@@ -1,0 +1,311 @@
+/* 전체 요소 공통 설정 */
+* {
+  /* padding과 border를 크기에 포함 */
+  box-sizing: border-box;
+}
+
+/* 페이지 전체 스타일 */
+body {
+  /* 기본 여백 제거 */
+  margin: 0;
+  /* 페이지 안쪽 여백 */
+  padding: 24px;
+  /* 기본 글꼴 */
+  font-family: Arial, sans-serif;
+  /* 배경색 */
+  background: #f5f6f8;
+  /* 글자색 */
+  color: #222;
+}
+
+/* 메인 제목 */
+h1 {
+  /* 제목 여백 */
+  margin: 0 0 8px;
+  /* 제목 크기 */
+  font-size: 28px;
+}
+
+/* 섹션 제목 */
+h2 {
+  /* 제목 여백 */
+  margin: 0 0 14px;
+  /* 제목 크기 */
+  font-size: 20px;
+}
+
+/* 설명 문장 */
+.subtitle {
+  /* 문단 여백 */
+  margin: 0 0 20px;
+  /* 보조 글자색 */
+  color: #666;
+  /* 줄 간격 */
+  line-height: 1.5;
+}
+
+/* 흰색 박스 패널 */
+.panel {
+  /* 패널 배경 */
+  background: #fff;
+  /* 테두리 */
+  border: 1px solid #ddd;
+  /* 모서리 둥글게 */
+  border-radius: 12px;
+  /* 안쪽 여백 */
+  padding: 18px;
+  /* 아래쪽 간격 */
+  margin-bottom: 18px;
+  /* 약한 그림자 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* 입력 컨트롤 묶음 */
+.controls {
+  /* 가로 배치 */
+  display: flex;
+  /* 줄바꿈 허용 */
+  flex-wrap: wrap;
+  /* 요소 간격 */
+  gap: 14px;
+  /* 세로 중앙 정렬 */
+  align-items: center;
+}
+
+/* 입력 라벨 */
+label {
+  /* 라벨 강조 */
+  font-weight: 600;
+}
+
+/* 입력창 공통 스타일 */
+input[type="file"],
+input[type="number"],
+input[type="text"] {
+  /* 입력창 여백 */
+  padding: 8px;
+  /* 입력창 테두리 */
+  border: 1px solid #ccc;
+  /* 입력창 모서리 */
+  border-radius: 8px;
+  /* 입력창 배경 */
+  background: #fff;
+}
+
+/* k 입력창 */
+input[type="text"] {
+  /* 입력창 너비 */
+  width: 170px;
+}
+
+/* 슬라이더 + 숫자 입력 묶음 */
+.size-control {
+  /* 가로 배치 */
+  display: inline-flex;
+  /* 세로 중앙 정렬 */
+  align-items: center;
+  /* 요소 간격 */
+  gap: 8px;
+}
+
+/* 슬라이더 스타일 */
+input[type="range"] {
+  /* 슬라이더 너비 */
+  width: 140px;
+  /* 세로 중앙 정렬 보정 */
+  vertical-align: middle;
+}
+
+/* 버튼 스타일 */
+button {
+  /* 버튼 여백 */
+  padding: 9px 14px;
+  /* 기본 테두리 제거 */
+  border: none;
+  /* 버튼 모서리 */
+  border-radius: 8px;
+  /* 버튼 배경 */
+  background: #222;
+  /* 버튼 글자색 */
+  color: white;
+  /* 버튼 글자 굵기 */
+  font-weight: 600;
+  /* 마우스 커서 */
+  cursor: pointer;
+}
+
+/* 비활성 버튼 */
+button:disabled {
+  /* 비활성 배경 */
+  background: #aaa;
+  /* 비활성 커서 */
+  cursor: not-allowed;
+}
+
+/* 상태 메시지 */
+.status {
+  /* 위쪽 여백 */
+  margin-top: 12px;
+  /* 글자색 */
+  color: #444;
+  /* 줄 간격 */
+  line-height: 1.5;
+  /* 줄바꿈 유지 */
+  white-space: pre-line;
+}
+
+/* Canvas 카드 행 */
+.canvas-row {
+  /* 가로 배치 */
+  display: flex;
+  /* 줄바꿈 허용 */
+  flex-wrap: wrap;
+  /* 카드 간격 */
+  gap: 18px;
+}
+
+/* Canvas 카드 */
+.canvas-card {
+  /* 카드 배경 */
+  background: #fafafa;
+  /* 카드 테두리 */
+  border: 1px solid #ddd;
+  /* 카드 모서리 */
+  border-radius: 10px;
+  /* 카드 여백 */
+  padding: 12px;
+}
+
+/* Canvas 카드 제목 */
+.canvas-card h3 {
+  /* 제목 여백 */
+  margin: 0 0 8px;
+  /* 제목 크기 */
+  font-size: 16px;
+}
+
+/* 모든 Canvas */
+canvas {
+  /* 블록 요소 */
+  display: block;
+  /* 최대 너비 제한 */
+  max-width: 100%;
+  /* Canvas 테두리 */
+  border: 1px solid #ccc;
+  /* Canvas 배경 */
+  background: #fff;
+  /* 이미지 렌더링 */
+  image-rendering: auto;
+}
+
+/* 복원 결과 grid */
+.result-grid {
+  /* grid 배치 */
+  display: grid;
+  /* 자동 열 배치 */
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  /* 카드 간격 */
+  gap: 14px;
+}
+
+/* 복원 결과 카드 */
+.result-card {
+  /* 카드 배경 */
+  background: #fafafa;
+  /* 카드 테두리 */
+  border: 1px solid #ddd;
+  /* 카드 모서리 */
+  border-radius: 10px;
+  /* 카드 여백 */
+  padding: 12px;
+}
+
+/* 복원 카드 제목 */
+.result-card h3 {
+  /* 제목 여백 */
+  margin: 0 0 8px;
+  /* 제목 크기 */
+  font-size: 16px;
+}
+
+/* 복원 카드 설명 */
+.result-card p {
+  /* 설명 여백 */
+  margin: 8px 0 0;
+  /* 설명 크기 */
+  font-size: 13px;
+  /* 줄 간격 */
+  line-height: 1.5;
+  /* 설명 색상 */
+  color: #555;
+}
+
+/* 표 감싸는 영역 (수평 스크롤) */
+#metricTable {
+  /* 넘치면 가로 스크롤 */
+  overflow-x: auto;
+}
+
+/* 표 전체 */
+table {
+  /* 표 너비 */
+  width: 100%;
+  /* 테두리 합치기 */
+  border-collapse: collapse;
+  /* 표 배경 */
+  background: #fff;
+  /* 위쪽 여백 */
+  margin-top: 10px;
+  /* 줄바꿈 방지 */
+  white-space: nowrap;
+}
+
+/* 표 셀 */
+th, td {
+  /* 셀 테두리 */
+  border: 1px solid #ddd;
+  /* 셀 여백 */
+  padding: 8px;
+  /* 오른쪽 정렬 */
+  text-align: right;
+  /* 글자 크기 */
+  font-size: 14px;
+}
+
+/* 첫 번째 열 제목 */
+th:first-child,
+/* 첫 번째 열 값 */
+td:first-child {
+  /* 중앙 정렬 */
+  text-align: center;
+}
+
+/* 표 헤더 */
+th {
+  /* 헤더 배경 */
+  background: #f0f0f0;
+}
+
+/* 하단 설명 */
+.note {
+  /* 설명 색상 */
+  color: #666;
+  /* 설명 크기 */
+  font-size: 14px;
+  /* 줄 간격 */
+  line-height: 1.6;
+}
+
+/* 입력 필드 안내 텍스트 */
+.hint {
+  /* 블록 표시 (줄바꿈) */
+  display: block;
+  /* 위쪽 여백 */
+  margin-top: 4px;
+  /* 안내 글자 크기 */
+  font-size: 12px;
+  /* 안내 글자색 */
+  color: #888;
+  /* 안내 글자 굵기 */
+  font-weight: 400;
+}
