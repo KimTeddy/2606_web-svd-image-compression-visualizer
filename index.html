@@ -10,7 +10,7 @@
   <!-- 반응형 화면 설정 -->
   <title>SVD Image Compression Visualizer</title>
   <!-- 브라우저 탭 제목 -->
-  <link rel="icon" href="favicon.png" type="image/png" />
+  <link rel="icon" href="svd_icon.png" type="image/png" />
   <!-- 파비콘 설정 -->
 
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
@@ -37,7 +37,7 @@
       <!-- 가운데: 스피너와 상태 메시지 -->
       <div class="loading-center">
         <div class="spinner-wrapper">
-          <img src="favicon.png" alt="Loading" class="loading-icon" />
+          <img src="svd_icon.png" alt="Loading" class="loading-icon" />
         </div>
         <p id="loadingStatusText">SVD 계산 대기 중...</p>
       </div>
@@ -90,6 +90,7 @@
         k 값들:
         <input id="kInput" type="text" value="5,10,20,40,80" />
         <!-- k 목록 입력 -->
+        <small class="hint">추출할 특이값(Rank)의 개수를 쉼표로 구분해 입력하세요. k값이 클수록 원본과 가까워집니다.</small>
       </label>
 
       <button id="runButton" disabled>SVD 실행</button>

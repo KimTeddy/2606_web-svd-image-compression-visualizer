@@ -40,6 +40,18 @@ let imageHeight = 0;
 // SVD library 로딩 시작.
 await loadSVDLibrary();
 
+// 기본 이미지(svd_icon.png) 자동 로드
+try {
+  sourceImage = await loadImageFromUrl("svd_icon.png");
+  drawInputImageAndMakeMatrix();
+  updateRunButton();
+  if (libraryReady) {
+    statusDiv.textContent = "기본 이미지를 불러왔습니다. SVD 실행 버튼을 누르세요.";
+  }
+} catch (error) {
+  console.log("기본 이미지 로딩 실패:", error);
+}
+
 // 이미지 선택 이벤트 등록.
 imageInput.addEventListener("change", async (event) => {
   // 선택된 파일 얻기.
@@ -179,6 +191,24 @@ function loadImageFromFile(file) {
     };
 
     // 이미지 로딩 시작.
+    img.src = url;
+  });
+}
+
+// URL에서 이미지를 읽는 함수 (기본 이미지 로드용)
+function loadImageFromUrl(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous"; // CORS 문제 방지
+    
+    img.onload = () => {
+      resolve(img);
+    };
+    
+    img.onerror = () => {
+      reject(new Error(`URL에서 이미지를 불러오지 못했습니다: ${url}`));
+    };
+    
     img.src = url;
   });
 }
@@ -463,19 +493,34 @@ function drawGrayMatrixToCanvas(canvas, matrix) {
   ctx.putImageData(imageData, 0, 0);
 }
 
+// 고해상도(High DPI) 캔버스 설정 함수.
+function setupHighDPICanvas(canvas, logicalWidth, logicalHeight) {
+  const dpr = window.devicePixelRatio || 1;
+  // CSS 논리적 크기
+  canvas.style.width = logicalWidth + "px";
+  canvas.style.height = logicalHeight + "px";
+  // 실제 픽셀 해상도
+  canvas.width = logicalWidth * dpr;
+  canvas.height = logicalHeight * dpr;
+  
+  const ctx = canvas.getContext("2d");
+  // 스케일 조정
+  ctx.scale(dpr, dpr);
+  return ctx;
+}
+
 // singular value 그래프 출력.
 function drawSingularValuePlot(singularValues) {
-  // 그래프 Canvas context.
-  const ctx = singularCanvas.getContext("2d");
+  const w = 520;
+  const h = 280;
+  // 고해상도 캔버스 설정 및 context 얻기
+  const ctx = setupHighDPICanvas(singularCanvas, w, h);
+  
   // Canvas 초기화.
-  clearCanvas(ctx, singularCanvas);
+  clearCanvas(ctx, w, h);
 
-  // 그래프 여백 설정.
-  const margin = { left: 56, right: 20, top: 20, bottom: 42 };
-  // Canvas 너비.
-  const w = singularCanvas.width;
-  // Canvas 높이.
-  const h = singularCanvas.height;
+  // 그래프 여백 설정. 좌측 여백을 64로 늘려서 긴 텍스트 잘림 방지.
+  const margin = { left: 64, right: 20, top: 20, bottom: 42 };
 
   // 그래프 영역 너비.
   const plotW = w - margin.left - margin.right;
@@ -488,7 +533,7 @@ function drawSingularValuePlot(singularValues) {
   const maxY = Math.max(...values, 1e-12);
 
   // 축 그리기.
-  drawAxes(ctx, margin, w, h, "Index", "log10(σ + 1)", "#1a1a1a");
+  drawAxes(ctx, margin, w, h, "Index [i]", "Singular Value [log10(σ + 1)]", "#1a1a1a");
 
   // 선 그리기 시작.
   ctx.beginPath();
@@ -520,17 +565,16 @@ function drawSingularValuePlot(singularValues) {
 
 // metric 그래프 출력.
 function drawMetricPlot(metrics) {
-  // 그래프 Canvas context.
-  const ctx = metricCanvas.getContext("2d");
+  const w = 520;
+  const h = 280;
+  // 고해상도 캔버스 설정 및 context 얻기
+  const ctx = setupHighDPICanvas(metricCanvas, w, h);
+  
   // Canvas 초기화.
-  clearCanvas(ctx, metricCanvas);
+  clearCanvas(ctx, w, h);
 
-  // 그래프 여백 설정.
-  const margin = { left: 56, right: 20, top: 20, bottom: 42 };
-  // Canvas 너비.
-  const w = metricCanvas.width;
-  // Canvas 높이.
-  const h = metricCanvas.height;
+  // 그래프 여백 설정. 좌측 여백 64.
+  const margin = { left: 64, right: 20, top: 20, bottom: 42 };
 
   // 그래프 영역 너비.
   const plotW = w - margin.left - margin.right;
@@ -541,7 +585,7 @@ function drawMetricPlot(metrics) {
   const maxK = Math.max(...metrics.map(m => m.k), 1);
 
   // 축 그리기.
-  drawAxes(ctx, margin, w, h, "k", "ratio", "#1a1a1a");
+  drawAxes(ctx, margin, w, h, "Rank [k]", "Ratio [%]", "#1a1a1a");
 
   // 실선 색상 설정.
   ctx.strokeStyle = "#00ffbb";
@@ -587,13 +631,15 @@ function drawMetricPlot(metrics) {
   // 점선 해제.
   ctx.setLineDash([]);
 
-  // 범례 색상 설정.
-  ctx.fillStyle = "#ccc";
   // 범례 글꼴 설정.
   ctx.font = "13px Roboto, Arial";
-  // retained energy 범례.
+  
+  // retained energy 범례 색상 설정 (그래프 실선 색상과 동일)
+  ctx.fillStyle = "#00ffbb";
   ctx.fillText("── retained energy", margin.left + 12, margin.top + 18);
-  // relative error 범례.
+  
+  // relative error 범례 색상 설정 (그래프 점선 색상과 동일)
+  ctx.fillStyle = "#60ffc2";
   ctx.fillText("╌╌ relative error", margin.left + 12, margin.top + 36);
 }
 
@@ -637,15 +683,19 @@ function drawAxes(ctx, margin, w, h, xLabel, yLabel, bgColor) {
   // 축 출력.
   ctx.stroke();
 
+  // 텍스트 정렬 설정 (가운데 정렬)
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
   // 라벨 글꼴.
   ctx.font = "13px Roboto, Arial";
   // x축 라벨 출력.
-  ctx.fillText(xLabel, (x0 + x1) / 2, h - 12);
+  ctx.fillText(xLabel, (x0 + x1) / 2, h - 16);
 
   // 회전 상태 저장.
   ctx.save();
-  // y축 라벨 위치 이동.
-  ctx.translate(14, (y0 + y1) / 2);
+  // y축 라벨 위치 이동 (마진 정중앙)
+  ctx.translate(margin.left / 2 - 4, (y0 + y1) / 2);
   // y축 라벨 회전.
   ctx.rotate(-Math.PI / 2);
   // y축 라벨 출력.
@@ -674,13 +724,13 @@ function drawAxes(ctx, margin, w, h, xLabel, yLabel, bgColor) {
 }
 
 // Canvas 초기화 함수.
-function clearCanvas(ctx, canvas) {
+function clearCanvas(ctx, w, h) {
   // 기존 그림 삭제.
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, w, h);
   // 다크 배경색 설정.
   ctx.fillStyle = "#1a1a1a";
   // 배경 채우기.
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, w, h);
 }
 
 // metric 표 출력 함수.
