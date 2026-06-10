@@ -160,6 +160,15 @@ button {
   transition: background 0.3s ease;
 }
 
+/* SVD 실행 버튼 강조 스타일 (단독 줄 꽉 채우기) */
+#runButton {
+  flex-basis: 100%;
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
 /* 버튼 호버 */
 button:hover:not(:disabled) {
   /* 밝은 강조색 */
