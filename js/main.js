@@ -313,9 +313,6 @@ async function runSVD() {
 
   // 계산 예외 처리.
   try {
-    // JS 배열을 Matrix로 변환.
-    const A = new Matrix(grayMatrix);
-    
     // SVD 계산 시작 전, 수학적 과정을 시각적으로 보여주기 위한 Power Iteration 실행 (약 15회 반복)
     LoadingUI.setStatus("행렬 분석 중 (지배적 특이벡터 탐색)...");
     await simulatePowerIteration(grayMatrix, imageHeight, imageWidth, 15, async (iter, v, sigma, rank1Matrix) => {
@@ -324,14 +321,33 @@ async function runSVD() {
 
     // 진짜 연산 과정을 충분히 보여준 후, 전체 행렬 분해(Decomposition)를 백그라운드에서 한 번에 완료합니다.
     LoadingUI.setStatus("전체 특이값 분해(SVD) 완료 중...");
-    await new Promise(resolve => setTimeout(resolve, 50)); // 렌더링 갱신 양보
-    // SVD 계산. (여기서 무거운 연산 발생)
-    const svd = new SVDClass(A, { autoTranspose: true });
+    
+    // Web Worker를 생성하여 무거운 SVD 연산을 백그라운드로 위임 (UI 프리징 완전 해소)
+    const svdResult = await new Promise((resolve, reject) => {
+      const worker = new Worker("js/worker.js", { type: "module" });
+      
+      worker.onmessage = (e) => {
+        if (e.data.type === "success") {
+          resolve(e.data);
+        } else {
+          reject(new Error(e.data.message));
+        }
+        worker.terminate(); // 연산 완료 후 워커 종료
+      };
+      
+      worker.onerror = (err) => {
+        reject(new Error("Web Worker 오류: " + (err.message || "SVD 연산 실패")));
+        worker.terminate();
+      };
+      
+      // 워커 스레드에 흑백 행렬 데이터 전송
+      worker.postMessage({ grayMatrix: grayMatrix });
+    });
 
-    // ① U = svd.leftSingularVectors
-    const U = svd.leftSingularVectors;
-    const V = svd.rightSingularVectors;
-    const singularValues = svd.diagonal;
+    // 워커로부터 받은 계산 결과(일반 2D 배열) 매핑
+    const U = svdResult.U;
+    const V = svdResult.V;
+    const singularValues = svdResult.singularValues;
 
     // SVD 결과 확인.
     if (!U || !V || !singularValues || singularValues.length === 0) {
@@ -512,31 +528,24 @@ function setupHighDPICanvas(canvas, logicalWidth, logicalHeight) {
 }
 
 // singular value 그래프 출력.
+// 마지막 데이터를 저장하여 resize 시 다시 그리기 위한 변수
+let _lastSingularValues = null;
+let _lastMetrics = null;
+
 function drawSingularValuePlot(singularValues) {
-  let w = 520;
-  let h = 280;
-  // 원본 이미지 비율에 맞춰 그래프 비율 조정
-  if (typeof sourceImage !== 'undefined' && sourceImage && sourceImage.width > 0) {
-    const ratio = sourceImage.width / sourceImage.height;
-    if (ratio >= 1) {
-      w = 520;
-      h = Math.round(520 / ratio);
-    } else {
-      h = 520;
-      w = Math.round(520 * ratio);
-    }
-    // 너무 찌그러지지 않도록 최소 크기 제한
-    w = Math.max(300, w);
-    h = Math.max(200, h);
-  }
+  _lastSingularValues = singularValues;
+  
+  // 가로로 넓은 그래프 (2:1 비율)
+  const w = 600;
+  const h = 300;
   // 고해상도 캔버스 설정 및 context 얻기
   const ctx = setupHighDPICanvas(singularCanvas, w, h);
   
   // Canvas 초기화.
   clearCanvas(ctx, w, h);
 
-  // 그래프 여백 설정. 좌측 여백을 64로 늘려서 긴 텍스트 잘림 방지.
-  const margin = { left: 64, right: 20, top: 20, bottom: 42 };
+  // 그래프 여백 설정. 좌측 여백을 넉넉하게.
+  const margin = { left: 72, right: 30, top: 24, bottom: 50 };
 
   // 그래프 영역 너비.
   const plotW = w - margin.left - margin.right;
@@ -547,9 +556,18 @@ function drawSingularValuePlot(singularValues) {
   const values = singularValues.map(v => Math.log10(v + 1));
   // y축 최대값.
   const maxY = Math.max(...values, 1e-12);
+  // x축 최대값 (인덱스 개수).
+  const maxX = values.length - 1;
 
-  // 축 그리기.
-  drawAxes(ctx, margin, w, h, "Index [i]", "Singular Value [log10(σ + 1)]", "#1a1a1a");
+  // Nice Numbers 알고리즘으로 깔끔한 눈금 자동 생성
+  const xTicks = generateNiceTicks(0, maxX, 6);
+  const yTicks = generateNiceTicks(0, maxY, 5);
+
+  // 축과 눈금 그리기.
+  drawAxesWithTicks(ctx, margin, w, h, "Index [i]", "Singular Value [log10(σ + 1)]",
+    { min: 0, max: maxX, ticks: xTicks },
+    { min: 0, max: maxY, ticks: yTicks }
+  );
 
   // 선 그리기 시작.
   ctx.beginPath();
@@ -557,16 +575,14 @@ function drawSingularValuePlot(singularValues) {
   // 모든 singular value 순회.
   for (let i = 0; i < values.length; i++) {
     // x 좌표 계산.
-    const x = margin.left + (i / Math.max(1, values.length - 1)) * plotW;
+    const x = margin.left + (i / Math.max(1, maxX)) * plotW;
     // y 좌표 계산.
     const y = margin.top + plotH - (values[i] / maxY) * plotH;
 
     // 첫 점 처리.
     if (i === 0) {
-      // 시작점 이동.
       ctx.moveTo(x, y);
     } else {
-      // 다음 점 연결.
       ctx.lineTo(x, y);
     }
   }
@@ -581,30 +597,19 @@ function drawSingularValuePlot(singularValues) {
 
 // metric 그래프 출력.
 function drawMetricPlot(metrics) {
-  let w = 520;
-  let h = 280;
-  // 원본 이미지 비율에 맞춰 그래프 비율 조정
-  if (typeof sourceImage !== 'undefined' && sourceImage && sourceImage.width > 0) {
-    const ratio = sourceImage.width / sourceImage.height;
-    if (ratio >= 1) {
-      w = 520;
-      h = Math.round(520 / ratio);
-    } else {
-      h = 520;
-      w = Math.round(520 * ratio);
-    }
-    // 너무 찌그러지지 않도록 최소 크기 제한
-    w = Math.max(300, w);
-    h = Math.max(200, h);
-  }
+  _lastMetrics = metrics;
+  
+  // 가로로 넓은 그래프 (2:1 비율)
+  const w = 600;
+  const h = 300;
   // 고해상도 캔버스 설정 및 context 얻기
   const ctx = setupHighDPICanvas(metricCanvas, w, h);
   
   // Canvas 초기화.
   clearCanvas(ctx, w, h);
 
-  // 그래프 여백 설정. 좌측 여백 64.
-  const margin = { left: 64, right: 20, top: 20, bottom: 42 };
+  // 그래프 여백 설정.
+  const margin = { left: 72, right: 30, top: 24, bottom: 50 };
 
   // 그래프 영역 너비.
   const plotW = w - margin.left - margin.right;
@@ -614,144 +619,247 @@ function drawMetricPlot(metrics) {
   // 최대 k 값.
   const maxK = Math.max(...metrics.map(m => m.k), 1);
 
-  // 축 그리기.
-  drawAxes(ctx, margin, w, h, "Rank [k]", "Ratio [%]", "#1a1a1a");
+  // Nice Numbers 알고리즘으로 깔끔한 눈금 자동 생성
+  const xTicks = generateNiceTicks(0, maxK, 6);
+  const yTicks = generateNiceTicks(0, 100, 5); // 0~100%
 
-  // 실선 색상 설정.
+  // 축과 눈금 그리기.
+  drawAxesWithTicks(ctx, margin, w, h, "Rank [k]", "Ratio [%]",
+    { min: 0, max: maxK, ticks: xTicks },
+    { min: 0, max: 100, ticks: yTicks }
+  );
+
+  // retained energy 실선 그리기.
   ctx.strokeStyle = "#00ffbb";
-  // 실선 시작.
   ctx.beginPath();
-  // retained energy 점 순회.
   metrics.forEach((m, idx) => {
-    // x 좌표 계산.
     const x = margin.left + (m.k / maxK) * plotW;
-    // y 좌표 계산.
     const y = margin.top + plotH - m.retainedEnergy * plotH;
-
-    // 첫 점 처리.
     if (idx === 0) ctx.moveTo(x, y);
-    // 나머지 점 연결.
     else ctx.lineTo(x, y);
   });
-  // 선 두께 설정.
   ctx.lineWidth = 2;
-  // retained energy 선 출력.
   ctx.stroke();
 
-  // 점선 색상 설정.
-  ctx.strokeStyle = "#60ffc2";
-  // 점선 패턴 설정.
-  ctx.setLineDash([5, 5]);
-  // 점선 시작.
-  ctx.beginPath();
-  // relative error 점 순회.
-  metrics.forEach((m, idx) => {
-    // x 좌표 계산.
+  // retained energy 점(dot) 표시
+  ctx.fillStyle = "#00ffbb";
+  metrics.forEach(m => {
     const x = margin.left + (m.k / maxK) * plotW;
-    // y 좌표 계산.
-    const y = margin.top + plotH - m.relativeError * plotH;
+    const y = margin.top + plotH - m.retainedEnergy * plotH;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
 
-    // 첫 점 처리.
+  // relative error 점선 그리기.
+  ctx.strokeStyle = "#60ffc2";
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  metrics.forEach((m, idx) => {
+    const x = margin.left + (m.k / maxK) * plotW;
+    const y = margin.top + plotH - m.relativeError * plotH;
     if (idx === 0) ctx.moveTo(x, y);
-    // 나머지 점 연결.
     else ctx.lineTo(x, y);
   });
-  // relative error 선 출력.
   ctx.stroke();
-  // 점선 해제.
   ctx.setLineDash([]);
 
-  // 범례 글꼴 설정.
-  ctx.font = "13px Roboto, Arial";
-  
-  // retained energy 범례 색상 설정 (그래프 실선 색상과 동일)
-  ctx.fillStyle = "#00ffbb";
-  ctx.fillText("── retained energy", margin.left + 12, margin.top + 18);
-  
-  // relative error 범례 색상 설정 (그래프 점선 색상과 동일)
+  // relative error 점(dot) 표시
   ctx.fillStyle = "#60ffc2";
-  ctx.fillText("╌╌ relative error", margin.left + 12, margin.top + 36);
+  metrics.forEach(m => {
+    const x = margin.left + (m.k / maxK) * plotW;
+    const y = margin.top + plotH - m.relativeError * plotH;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // 범례 배경 박스 (우측 상단에 배치하여 데이터 선과 겹침 방지)
+  const legendX = w - margin.right - 170;
+  const legendY = margin.top + 8;
+  const legendW = 160;
+  const legendH = 44;
+  ctx.fillStyle = "rgba(26, 26, 26, 0.85)";
+  ctx.fillRect(legendX, legendY, legendW, legendH);
+  ctx.strokeStyle = "#444";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(legendX, legendY, legendW, legendH);
+
+  // 범례 글꼴 설정.
+  ctx.font = "12px Roboto, Arial";
+  
+  // retained energy 범례
+  ctx.fillStyle = "#00ffbb";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText("── retained energy", legendX + 8, legendY + 14);
+  
+  // relative error 범례
+  ctx.fillStyle = "#60ffc2";
+  ctx.fillText("╌╌ relative error", legendX + 8, legendY + 32);
 }
 
-// 그래프 축 출력 함수.
-function drawAxes(ctx, margin, w, h, xLabel, yLabel, bgColor) {
-  // 배경색이 지정되면 배경 채우기.
-  if (bgColor) {
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, w, h);
-  }
-
+// 그래프 축과 숫자 눈금 출력 함수.
+// xRange/yRange: { min, max, ticks: [숫자 배열] }
+function drawAxesWithTicks(ctx, margin, w, h, xLabel, yLabel, xRange, yRange) {
   // 현재 drawing 상태 저장.
   ctx.save();
 
-  // 축 선 색상.
-  ctx.strokeStyle = "#555";
-  // 글자 색상.
-  ctx.fillStyle = "#ccc";
-  // 축 선 두께.
-  ctx.lineWidth = 1;
-
-  // x축 시작 x.
+  // 좌표 기준점
   const x0 = margin.left;
-  // x축 y 위치.
   const y0 = h - margin.bottom;
-  // x축 끝 x.
   const x1 = w - margin.right;
-  // y축 끝 y.
   const y1 = margin.top;
 
-  // 축 path 시작.
-  ctx.beginPath();
-  // x축 시작점.
-  ctx.moveTo(x0, y0);
-  // x축 끝점.
-  ctx.lineTo(x1, y0);
-  // y축 시작점.
-  ctx.moveTo(x0, y0);
-  // y축 끝점.
-  ctx.lineTo(x0, y1);
-  // 축 출력.
-  ctx.stroke();
+  const plotW = x1 - x0;
+  const plotH = y0 - y1;
+  const xSpan = xRange.max - xRange.min;
+  const ySpan = yRange.max - yRange.min;
 
-  // 텍스트 정렬 설정 (가운데 정렬)
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  // 라벨 글꼴.
-  ctx.font = "13px Roboto, Arial";
-  // x축 라벨 출력.
-  ctx.fillText(xLabel, (x0 + x1) / 2, h - 16);
-
-  // 회전 상태 저장.
-  ctx.save();
-  // y축 라벨 위치 이동 (마진 정중앙)
-  ctx.translate(margin.left / 2 - 4, (y0 + y1) / 2);
-  // y축 라벨 회전.
-  ctx.rotate(-Math.PI / 2);
-  // y축 라벨 출력.
-  ctx.fillText(yLabel, 0, 0);
-  // 회전 상태 복구.
-  ctx.restore();
-
-  // grid 선 색상.
+  // 배경 grid 그리기 (y축 방향)
   ctx.strokeStyle = "#333";
-  // grid 4개 출력.
-  for (let i = 1; i <= 4; i++) {
-    // grid y 좌표.
-    const y = y0 - ((y0 - y1) * i) / 4;
-    // grid path 시작.
+  ctx.lineWidth = 0.5;
+  for (const val of yRange.ticks) {
+    const ratio = ySpan > 0 ? (val - yRange.min) / ySpan : 0;
+    const y = y0 - ratio * plotH;
     ctx.beginPath();
-    // grid 시작점.
     ctx.moveTo(x0, y);
-    // grid 끝점.
     ctx.lineTo(x1, y);
-    // grid 출력.
     ctx.stroke();
   }
+
+  // 배경 grid 그리기 (x축 방향)
+  for (const val of xRange.ticks) {
+    const ratio = xSpan > 0 ? (val - xRange.min) / xSpan : 0;
+    const x = x0 + ratio * plotW;
+    ctx.beginPath();
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y1);
+    ctx.stroke();
+  }
+
+  // 축 선 그리기
+  ctx.strokeStyle = "#666";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y0);
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x0, y1);
+  ctx.stroke();
+
+  // 눈금 숫자 설정
+  ctx.fillStyle = "#aaa";
+  ctx.font = "11px Roboto, Arial";
+
+  // x축 눈금 숫자 출력
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  for (const val of xRange.ticks) {
+    const ratio = xSpan > 0 ? (val - xRange.min) / xSpan : 0;
+    const x = x0 + ratio * plotW;
+
+    // 눈금 선(tick)
+    ctx.strokeStyle = "#666";
+    ctx.beginPath();
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y0 + 4);
+    ctx.stroke();
+
+    // 숫자 (정수면 소수점 생략, 아니면 적절한 자릿수)
+    ctx.fillStyle = "#aaa";
+    ctx.fillText(formatTickLabel(val), x, y0 + 6);
+  }
+
+  // y축 눈금 숫자 출력
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  for (const val of yRange.ticks) {
+    const ratio = ySpan > 0 ? (val - yRange.min) / ySpan : 0;
+    const y = y0 - ratio * plotH;
+
+    // 눈금 선(tick)
+    ctx.strokeStyle = "#666";
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x0 - 4, y);
+    ctx.stroke();
+
+    // 숫자
+    ctx.fillStyle = "#aaa";
+    ctx.fillText(formatTickLabel(val), x0 - 8, y);
+  }
+
+  // x축 라벨
+  ctx.fillStyle = "#ccc";
+  ctx.font = "13px Roboto, Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(xLabel, (x0 + x1) / 2, h - 14);
+
+  // y축 라벨
+  ctx.save();
+  ctx.translate(16, (y0 + y1) / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(yLabel, 0, 0);
+  ctx.restore();
 
   // drawing 상태 복구.
   ctx.restore();
 }
+
+// Nice Numbers 알고리즘: 데이터 범위에 맞춰 깔끔한 눈금 숫자 배열을 생성.
+// 예: (0, 42, 5) → [0, 10, 20, 30, 40]
+function generateNiceTicks(dataMin, dataMax, targetCount) {
+  if (dataMax <= dataMin) return [dataMin];
+  
+  // 1. 데이터 범위에서 대략적인 간격 계산
+  const range = dataMax - dataMin;
+  const roughStep = range / Math.max(1, targetCount - 1);
+  
+  // 2. 이 간격을 "깔끔한 숫자"로 올림 (1, 2, 5, 10, 20, 50, 100...)
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const normalized = roughStep / magnitude;
+  
+  let niceStep;
+  if (normalized <= 1) niceStep = 1 * magnitude;
+  else if (normalized <= 2) niceStep = 2 * magnitude;
+  else if (normalized <= 5) niceStep = 5 * magnitude;
+  else niceStep = 10 * magnitude;
+  
+  // 3. niceStep 간격으로 눈금 배열 생성
+  const niceMin = Math.floor(dataMin / niceStep) * niceStep;
+  const niceMax = Math.ceil(dataMax / niceStep) * niceStep;
+  
+  const ticks = [];
+  for (let v = niceMin; v <= niceMax + niceStep * 0.01; v += niceStep) {
+    // 데이터 범위 안의 눈금만 포함
+    if (v >= dataMin - niceStep * 0.01 && v <= dataMax + niceStep * 0.01) {
+      ticks.push(Math.round(v * 1e10) / 1e10); // 부동소수점 오차 정리
+    }
+  }
+  
+  return ticks;
+}
+
+// 눈금 숫자 포맷: 정수면 소수점 없이, 아니면 적절한 자릿수로 표시.
+function formatTickLabel(val) {
+  if (Number.isInteger(val)) return val.toString();
+  // 소수점 이하 불필요한 0 제거 (최대 2자리)
+  return parseFloat(val.toFixed(2)).toString();
+}
+
+// 창 크기 변경 시 그래프 다시 그리기 (resize 이벤트)
+let _resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    if (_lastSingularValues) drawSingularValuePlot(_lastSingularValues);
+    if (_lastMetrics) drawMetricPlot(_lastMetrics);
+  }, 200);
+});
 
 // Canvas 초기화 함수.
 function clearCanvas(ctx, w, h) {

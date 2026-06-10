@@ -65,12 +65,12 @@ async function reconstructByTruncatedSVDAsync(U, singularValues, V, k, rows, col
     for (let x = 0; x < cols; x++) {
       let value = 0;
       for (let r = 0; r < k; r++) {
-        value += U.get(y, r) * singularValues[r] * V.get(x, r);
+        value += U[y][r] * singularValues[r] * V[x][r];
       }
       // 반올림하여 실제 픽셀 숫자(0~255)로 정제
       output[y][x] = Math.max(0, Math.min(255, Math.round(value)));
     }
-    
+
     // 계산된 현재 행(Row)의 실제 숫자 데이터와 y좌표를 콜백으로 전달
     if (onRowCalculated) {
       await onRowCalculated(y, output[y]);
@@ -106,10 +106,10 @@ async function simulatePowerIteration(matrix, rows, cols, iterations, onIteratio
       u[y] = sum;
       uNormSq += sum * sum;
     }
-    
+
     // sigma_1 (가장 큰 특이값) 추정
     const sigma = Math.sqrt(uNormSq);
-    
+
     // u 정규화
     for (let y = 0; y < rows; y++) {
       u[y] /= sigma;
@@ -125,7 +125,7 @@ async function simulatePowerIteration(matrix, rows, cols, iterations, onIteratio
       v[x] = sum;
       vNormSqNext += sum * sum;
     }
-    
+
     // v 정규화
     const vNormNext = Math.sqrt(vNormSqNext);
     for (let x = 0; x < cols; x++) {
