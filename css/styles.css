@@ -244,8 +244,20 @@ canvas {
   border: 1px solid #444;
   /* Canvas 배경 */
   background: #1a1a1a;
-  /* 이미지 렌더링 */
+  /* 기본적으로는 부드러운 이미지 렌더링 사용 */
   image-rendering: auto;
+}
+
+/* 픽셀 매트릭스 이미지를 보여주는 Canvas 전용 스타일 */
+#originalCanvas,
+#grayCanvas,
+.result-card canvas,
+#loadingInputCanvas,
+#loadingOutputCanvas {
+  /* 크기가 너무 작게 설정되었을 때도 형태를 알아볼 수 있도록 최소 크기 지정 */
+  min-width: 120px;
+  /* 작은 이미지를 강제로 확대했을 때 흐릿해지지 않고 픽셀 아트처럼 뚜렷하게 보이도록 설정 */
+  image-rendering: pixelated;
 }
 
 /* 복원 결과 grid */
@@ -448,4 +460,26 @@ th {
     flex-direction: row;
     text-align: left;
   }
+}
+
+.explanation-box {
+  background: #1a1a1a;
+  border-left: 4px solid #00ffbb;
+  padding: 16px 20px;
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 20px;
+}
+.explanation-box h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #fff;
+}
+.explanation-box p {
+  color: #ccc;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.explanation-box ul {
+  color: #ccc;
+  padding-left: 20px;
 }

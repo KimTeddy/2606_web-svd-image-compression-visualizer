@@ -710,7 +710,7 @@ function drawMetricPlot(metrics) {
   ctx.strokeRect(legendX, legendY, legendW, legendH);
 
   // 범례 글꼴 설정.
-  ctx.font = "12px Roboto, Arial";
+  ctx.font = "14px Roboto, Arial";
   
   // retained energy 범례
   ctx.fillStyle = "#00ffbb";
@@ -774,7 +774,7 @@ function drawAxesWithTicks(ctx, margin, w, h, xLabel, yLabel, xRange, yRange) {
 
   // 눈금 숫자 설정
   ctx.fillStyle = "#aaa";
-  ctx.font = "11px Roboto, Arial";
+  ctx.font = "13px Roboto, Arial";
 
   // x축 눈금 숫자 출력
   ctx.textAlign = "center";
@@ -816,7 +816,7 @@ function drawAxesWithTicks(ctx, margin, w, h, xLabel, yLabel, xRange, yRange) {
 
   // x축 라벨
   ctx.fillStyle = "#ccc";
-  ctx.font = "13px Roboto, Arial";
+  ctx.font = "15px Roboto, Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillText(xLabel, (x0 + x1) / 2, h - 14);
