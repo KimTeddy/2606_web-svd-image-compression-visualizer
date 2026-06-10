@@ -665,18 +665,23 @@ function drawMetricPlot(metrics) {
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // retained energy 점(dot) 표시
+  // retained energy 점(dot) 및 값 텍스트 표시
   ctx.fillStyle = "#00ffbb";
+  ctx.font = "11px Roboto, Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
   metrics.forEach(m => {
     const x = margin.left + (m.k / maxK) * plotW;
     const y = margin.top + plotH - m.retainedEnergy * plotH;
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, Math.PI * 2);
     ctx.fill();
+    // 텍스트 출력 (점보다 살짝 위에)
+    ctx.fillText(`k=${m.k} (${(m.retainedEnergy * 100).toFixed(1)}%)`, x, y - 6);
   });
 
   // relative error 점선 그리기.
-  ctx.strokeStyle = "#60ffc2";
+  ctx.strokeStyle = "#ff66b2";
   ctx.setLineDash([5, 5]);
   ctx.beginPath();
   metrics.forEach((m, idx) => {
@@ -688,14 +693,19 @@ function drawMetricPlot(metrics) {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // relative error 점(dot) 표시
-  ctx.fillStyle = "#60ffc2";
+  // relative error 점(dot) 및 값 텍스트 표시
+  ctx.fillStyle = "#ff66b2";
+  ctx.font = "11px Roboto, Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
   metrics.forEach(m => {
     const x = margin.left + (m.k / maxK) * plotW;
     const y = margin.top + plotH - m.relativeError * plotH;
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, Math.PI * 2);
     ctx.fill();
+    // 텍스트 출력 (점보다 살짝 위에)
+    ctx.fillText(`k=${m.k} (${(m.relativeError * 100).toFixed(1)}%)`, x, y - 6);
   });
 
   // 범례 배경 박스 (우측 상단에 배치하여 데이터 선과 겹침 방지)
@@ -719,7 +729,7 @@ function drawMetricPlot(metrics) {
   ctx.fillText("── retained energy", legendX + 8, legendY + 14);
   
   // relative error 범례
-  ctx.fillStyle = "#60ffc2";
+  ctx.fillStyle = "#ff66b2";
   ctx.fillText("╌╌ relative error", legendX + 8, legendY + 32);
 }
 
