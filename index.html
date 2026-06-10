@@ -80,10 +80,10 @@
         <span class="size-control">
           <input id="maxSizeSlider" type="range" value="256" min="40" max="1000" step="10" />
           <!-- 리사이즈 크기 슬라이더 -->
-          <input id="maxSizeInput" type="number" value="256" min="40" max="1000" step="10" title="업로드한 이미지의 가로·세로 중 긴 쪽을 이 값 이하로 리사이즈합니다." />
+          <input id="maxSizeInput" type="number" value="256" min="40" max="1000" step="10" title="업로드한 이미지의 가로와 세로 중 더 긴 변을 이 값 이하로 리사이즈합니다. (원본 크기까지만 설정 가능)" />
           <!-- 리사이즈 크기 입력 -->
         </span>
-        <small class="hint">이미지의 긴 변을 이 크기로 축소합니다. 클수록 정밀하지만 계산이 오래 걸립니다.</small>
+        <small class="hint">원본 이미지의 가로/세로 중 긴 변을 설정한 크기에 맞춰 비율대로 축소합니다. (최대 1000px, 원본 크기까지만 설정 가능)</small>
       </label>
 
       <label>

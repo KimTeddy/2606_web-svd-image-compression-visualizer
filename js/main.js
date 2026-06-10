@@ -109,7 +109,7 @@ function validateAndSyncMaxSize(source) {
   // 최대값 초과 검사.
   if (value > maxAllowed) {
     // 경고 팝업 표시.
-    alert(`최대 크기는 ${maxAllowed}px까지 설정할 수 있습니다. ${maxAllowed}px로 조정합니다.`);
+    alert(`현재 업로드된 이미지의 원본 크기 제약으로 인해 최대 크기는 ${maxAllowed}px까지만 설정할 수 있습니다. 값을 ${maxAllowed}px로 자동 조정합니다.`);
     // 최대값으로 보정.
     value = maxAllowed;
   }
