@@ -126,45 +126,40 @@ function validateAndSyncMaxSize(source) {
   maxSizeSlider.value = value;
 }
 
-// 숫자 입력 변경 이벤트 등록.
-maxSizeInput.addEventListener("change", () => {
-  // 입력값 검증 및 슬라이더 동기화.
-  validateAndSyncMaxSize("input");
-  // 이미지 없으면 종료.
+// 사이즈 재적용 공통 함수
+function applyMaxSizeChange() {
   if (!sourceImage) return;
-  // 새 크기로 행렬 재생성.
   drawInputImageAndMakeMatrix();
-  // 복원 결과 삭제.
   resultGrid.innerHTML = "";
-  // 표 삭제.
   metricTable.innerHTML = "";
-  // singular 그래프 삭제.
   clearCanvas(singularCanvas.getContext("2d"), singularCanvas);
-  // metric 그래프 삭제.
   clearCanvas(metricCanvas.getContext("2d"), metricCanvas);
-  // 사용자 안내 표시.
   statusDiv.textContent = "이미지 크기를 다시 적용했습니다. SVD 실행 버튼을 누르세요.";
+}
+
+// 숫자 입력 변경 이벤트 (엔터 키 입력 또는 포커스 아웃 시 최종 보정)
+maxSizeInput.addEventListener("change", () => {
+  validateAndSyncMaxSize("input");
+  applyMaxSizeChange();
+});
+
+// 키보드 누를 때 실시간 적용 (input 이벤트)
+maxSizeInput.addEventListener("input", () => {
+  const maxAllowed = Number(maxSizeInput.max);
+  const minAllowed = Number(maxSizeInput.min);
+  const value = Number(maxSizeInput.value);
+
+  // 실시간 타이핑 중에는 강제 보정(팝업 등)을 하지 않고 유효할 때만 즉시 적용
+  if (value >= minAllowed && value <= maxAllowed) {
+    maxSizeSlider.value = value;
+    applyMaxSizeChange();
+  }
 });
 
 // 슬라이더 조작 중(실시간) 이벤트 등록.
 maxSizeSlider.addEventListener("input", () => {
-  // 슬라이더 값을 숫자 입력에 동기화.
   maxSizeInput.value = maxSizeSlider.value;
-  // 이미지 없으면 종료.
-  if (!sourceImage) return;
-  
-  // 실시간으로 새 크기로 행렬 재생성 및 화면 갱신.
-  drawInputImageAndMakeMatrix();
-  // 복원 결과 삭제.
-  resultGrid.innerHTML = "";
-  // 표 삭제.
-  metricTable.innerHTML = "";
-  // singular 그래프 삭제.
-  clearCanvas(singularCanvas.getContext("2d"), singularCanvas);
-  // metric 그래프 삭제.
-  clearCanvas(metricCanvas.getContext("2d"), metricCanvas);
-  // 사용자 안내 표시.
-  statusDiv.textContent = "이미지 크기를 다시 적용했습니다. SVD 실행 버튼을 누르세요.";
+  applyMaxSizeChange();
 });
 
 // 실행 버튼 이벤트 등록.
@@ -182,6 +177,28 @@ runButton.addEventListener("click", () => {
 });
 
 
+
+// k 값 입력 이벤트 등록 (포커스 잃을 때 자동 정리).
+kInput.addEventListener("blur", formatKInput);
+
+// k 값 입력창에서 Enter 키 누를 때 자동 정리 및 포커스 해제.
+kInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    formatKInput();
+    kInput.blur();
+  }
+});
+
+// k 입력창 내용 자동 정리 함수.
+function formatKInput() {
+  try {
+    const maxRank = (imageWidth && imageHeight) ? Math.min(imageWidth, imageHeight) : Infinity;
+    const kValues = parseKValues(kInput.value, maxRank);
+    kInput.value = kValues.join(", ");
+  } catch (error) {
+    // 유효한 숫자가 하나도 없어서 발생하는 에러 등은 무시 (실행 버튼 누를 때 검증됨)
+  }
+}
 
 // 실행 버튼 갱신 함수.
 function updateRunButton() {
@@ -385,6 +402,9 @@ async function runSVD() {
     const maxRank = singularValues.length;
     // 입력 k 목록 정리.
     const kValues = parseKValues(kInput.value, maxRank);
+    
+    // 정리된 k 값을 다시 입력 필드에 업데이트 (사용자 편의성 향상)
+    kInput.value = kValues.join(", ");
 
     // 전체 energy 계산.
     const totalEnergy = singularValues.reduce((sum, s) => sum + s * s, 0);
@@ -568,8 +588,8 @@ function drawSingularValuePlot(singularValues) {
   // Canvas 초기화.
   clearCanvas(ctx, w, h);
 
-  // 그래프 여백 설정. 좌측 여백을 넉넉하게.
-  const margin = { left: 72, right: 30, top: 24, bottom: 50 };
+  // 그래프 여백 설정. 텍스트가 캔버스 밖으로 나가지 않도록 우측과 상단 여백 추가.
+  const margin = { left: 72, right: 48, top: 36, bottom: 50 };
 
   // 그래프 영역 너비.
   const plotW = w - margin.left - margin.right;
@@ -632,8 +652,8 @@ function drawMetricPlot(metrics) {
   // Canvas 초기화.
   clearCanvas(ctx, w, h);
 
-  // 그래프 여백 설정.
-  const margin = { left: 72, right: 30, top: 24, bottom: 50 };
+  // 그래프 여백 설정. 텍스트가 캔버스 밖으로 나가지 않도록 우측과 상단 여백 추가.
+  const margin = { left: 72, right: 48, top: 36, bottom: 50 };
 
   // 그래프 영역 너비.
   const plotW = w - margin.left - margin.right;

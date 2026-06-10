@@ -25,6 +25,45 @@ const LoadingUI = {
     
     if (this.inputCanvas) this.ctxIn = this.inputCanvas.getContext("2d");
     if (this.outputCanvas) this.ctxOut = this.outputCanvas.getContext("2d");
+    
+    // 리사이즈 이벤트 바인딩
+    window.addEventListener('resize', () => {
+      if (this.overlay && this.overlay.classList.contains('visible')) {
+        this.resizeWrappers();
+      }
+    });
+  },
+
+  resizeWrappers() {
+    if (!this.imageWidth || !this.imageHeight) return;
+    const aspect = this.imageWidth / this.imageHeight;
+    const isMobile = window.matchMedia("(orientation: portrait)").matches;
+    const wrappers = document.querySelectorAll("#loadingOverlay .scanner-wrapper");
+    
+    let maxWidth, maxHeight;
+    if (isMobile) {
+      // 모바일 (세로 배치): 가로는 화면 거의 꽉 채우고, 세로는 상하단 여백 및 텍스트 공간 제외
+      maxWidth = window.innerWidth * 0.85; 
+      maxHeight = (window.innerHeight * 0.8 - 150) / 2;
+    } else {
+      // 데스크탑 (가로 배치): 가로는 적당히 넓게, 세로는 충분히 여유롭게
+      maxWidth = Math.min(Math.max(window.innerWidth * 0.35, 200), 450); 
+      maxHeight = window.innerHeight * 0.65;
+    }
+    
+    // 주어진 최대 공간(maxWidth, maxHeight) 안에서 aspect 비율을 깨지 않고 가장 크게 렌더링
+    let finalWidth = maxWidth;
+    let finalHeight = finalWidth / aspect;
+    
+    if (finalHeight > maxHeight) {
+      finalHeight = maxHeight;
+      finalWidth = finalHeight * aspect;
+    }
+    
+    wrappers.forEach(w => {
+      w.style.width = `${finalWidth}px`;
+      w.style.height = `${finalHeight}px`;
+    });
   },
 
   show() {
@@ -53,6 +92,9 @@ const LoadingUI = {
     this.imageWidth = width;
     this.imageHeight = height;
     
+    // JS 기반으로 최적 크기를 실시간 계산하도록 변경
+    this.resizeWrappers();
+    
     if (this.inputCanvas) {
       this.inputCanvas.width = width;
       this.inputCanvas.height = height;
@@ -69,21 +111,8 @@ const LoadingUI = {
       }
       this.ctxIn.putImageData(imgDataIn, 0, 0);
       
-      // 행렬이 작아서 보일만 할 때 (최대 40px 이하) - 캔버스 픽셀 위에 실제 밝기 숫자 렌더링!
-      if (width <= 40 && height <= 40) {
-        // 이미지가 작으면 캔버스 자체를 화면에 꽉 채워서 확대 표시하게 되므로 글자를 그려도 잘 보입니다.
-        // 현재 CSS에서 canvas는 width 100% 등으로 늘어나므로 픽셀 1개가 크게 보임.
-        // 우리는 픽셀 1단위에 글자를 적어야 함 (픽셀 좌표 0,0, 1,1 단위)
-        this.ctxIn.font = "0.5px Arial";
-        this.ctxIn.fillStyle = "#00ffbb";
-        this.ctxIn.textAlign = "center";
-        this.ctxIn.textBaseline = "middle";
-        for (let i = 0; i < height; i++) {
-          for (let j = 0; j < width; j++) {
-            this.ctxIn.fillText(Math.round(grayMatrix[i][j]), j + 0.5, i + 0.5);
-          }
-        }
-      }
+      // 원래 작은 이미지에 텍스트를 그리는 코드가 있었으나,
+      // 숫자가 너무 빽빽해서 지저분한 그리드처럼 보이므로 제거함.
     }
     
     if (this.outputCanvas) {
@@ -112,16 +141,7 @@ const LoadingUI = {
       }
       this.ctxOut.putImageData(this.imgDataOut, 0, 0);
       
-      // 작은 행렬일 경우 결과 캔버스에도 진짜 숫자 그리기!
-      if (this.imageWidth <= 40 && this.imageHeight <= 40) {
-        this.ctxOut.font = "0.5px Arial";
-        this.ctxOut.fillStyle = "#ff3366"; // 연산 결과는 다른 색상으로
-        this.ctxOut.textAlign = "center";
-        this.ctxOut.textBaseline = "middle";
-        for (let x = 0; x < this.imageWidth; x++) {
-          this.ctxOut.fillText(Math.round(rowData[x]), x + 0.5, y + 0.5);
-        }
-      }
+      // 출력 캔버스에도 동일하게 숫자 그리기 제거됨
     }
 
     // 2. 스캔 라인 동기화 (실제 Y 좌표 비례 이동)

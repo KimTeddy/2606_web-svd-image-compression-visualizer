@@ -82,10 +82,15 @@ h2 {
 
 /* 입력 라벨 */
 label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   /* 라벨 강조 */
   font-weight: 600;
   /* 밝은 글자 */
   color: #e0e0e0;
+  max-width: 100%;
 }
 
 /* 입력창 공통 스타일 */
@@ -112,22 +117,27 @@ input[type="file"] {
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
+  width: 100%; /* 모바일 등 좁은 환경에서 꽉 차게 */
+  max-width: 300px;
 }
 
 /* k 입력창 */
 input[type="text"] {
   /* 입력창 너비 */
   width: 170px;
+  max-width: 100%;
 }
 
 /* 슬라이더 + 숫자 입력 묶음 */
 .size-control {
   /* 가로 배치 */
   display: inline-flex;
+  flex-wrap: wrap;
   /* 세로 중앙 정렬 */
   align-items: center;
   /* 요소 간격 */
   gap: 8px;
+  max-width: 100%;
 }
 
 /* 슬라이더 스타일 */
@@ -491,4 +501,14 @@ th {
 .explanation-box ul {
   color: #ccc;
   padding-left: 20px;
+}
+
+/* 모바일 화면 여백 최적화 (배율이 클 때 포함) */
+@media (max-width: 800px) {
+  body {
+    padding: 10px;
+  }
+  .panel {
+    padding: 14px;
+  }
 }

@@ -2,6 +2,7 @@
 <!-- 문서 타입 선언 -->
 <html lang="ko">
 <!-- 한국어 문서 시작 -->
+
 <head>
   <!-- 문서 정보 영역 -->
   <meta charset="UTF-8" />
@@ -30,11 +31,10 @@
         <h3 class="loading-card-title">Input Matrix</h3>
         <div class="scanner-wrapper">
           <canvas id="loadingInputCanvas"></canvas>
-          <div class="scanner-grid"></div>
           <div class="scanner-line"></div>
         </div>
       </div>
-      
+
       <!-- 가운데: 스피너와 상태 메시지 -->
       <div class="loading-center">
         <div class="spinner-wrapper">
@@ -80,7 +80,8 @@
         <span class="size-control">
           <input id="maxSizeSlider" type="range" value="256" min="40" max="1000" step="10" />
           <!-- 리사이즈 크기 슬라이더 -->
-          <input id="maxSizeInput" type="number" value="256" min="40" max="1000" step="10" title="업로드한 이미지의 가로와 세로 중 더 긴 변을 이 값 이하로 리사이즈합니다. (원본 크기까지만 설정 가능)" />
+          <input id="maxSizeInput" type="number" value="256" min="40" max="1000" step="10"
+            title="업로드한 이미지의 가로와 세로 중 더 긴 변을 이 값 이하로 리사이즈합니다. (원본 크기까지만 설정 가능)" />
           <!-- 리사이즈 크기 입력 -->
         </span>
         <small class="hint">원본 이미지의 가로/세로 중 긴 변을 설정한 크기에 맞춰 비율대로 축소합니다. (최대 1000px, 원본 크기까지만 설정 가능)</small>
@@ -89,7 +90,7 @@
       <label>
         <!-- k 값 라벨 -->
         k 값들:
-        <input id="kInput" type="text" value="5,10,20,40,80" />
+        <input id="kInput" type="text" value="5, 10, 20, 40, 80" />
         <!-- k 목록 입력 -->
         <small class="hint">추출할 특이값(Rank)의 개수를 쉼표로 구분해 입력하세요. k값이 클수록 원본과 가까워집니다.</small>
       </label>
@@ -162,8 +163,11 @@
 
     <div class="explanation-box" style="margin-top: 20px;">
       <h4>📊 그래프 이해하기</h4>
-      <p><strong>Singular value spectrum (왼쪽):</strong> 각 특이값(\(\sigma_i\))의 크기를 나타냅니다. 앞쪽의 몇몇 특이값이 매우 크고 뒤로 갈수록 0에 가깝게 뚝 떨어지는 현상을 볼 수 있습니다. 이는 <strong>"소수의 핵심 정보만으로도 이미지의 전체적인 뼈대를 충분히 구성할 수 있음"</strong>을 의미합니다.</p>
-      <p><strong>k에 따른 에너지와 오차 (오른쪽):</strong> \(k\)(Rank)값을 늘려갈 때, 원본 정보가 얼마나 보존되는지(Retained Energy, <span style="color:#00ffbb;">초록 선</span>)와 원본 대비 오차가 얼마나 줄어드는지(Relative Error, <span style="color:#ff66b2;">분홍 선</span>)를 보여줍니다.</p>
+      <p><strong>Singular value spectrum (왼쪽):</strong> 각 특이값(\(\sigma_i\))의 크기를 나타냅니다. 앞쪽의 몇몇 특이값이 매우 크고 뒤로 갈수록 0에 가깝게
+        뚝 떨어지는 현상을 볼 수 있습니다. 이는 <strong>"소수의 핵심 정보만으로도 이미지의 전체적인 뼈대를 충분히 구성할 수 있음"</strong>을 의미합니다.</p>
+      <p><strong>k에 따른 에너지와 오차 (오른쪽):</strong> \(k\)(Rank)값을 늘려갈 때, 원본 정보가 얼마나 보존되는지(Retained Energy, <span
+          style="color:#00ffbb;">초록 선</span>)와 원본 대비 오차가 얼마나 줄어드는지(Relative Error, <span style="color:#ff66b2;">분홍
+          선</span>)를 보여줍니다.</p>
     </div>
 
     <div id="metricTable"></div>
@@ -180,22 +184,26 @@
     <!-- 수학적 원리 패널 -->
     <h2>4. 수학적 원리 (SVD)</h2>
     <div class="explanation-box">
-      <p><strong>특이값 분해(Singular Value Decomposition)</strong>는 픽셀 데이터로 이루어진 \(m \times n\) 크기의 이미지 행렬 \(A\)를 다음과 같이 세 행렬의 곱으로 쪼개는 선형대수학 기법입니다.</p>
+      <p><strong>특이값 분해(Singular Value Decomposition)</strong>는 픽셀 데이터로 이루어진 \(m \times n\) 크기의 이미지 행렬 \(A\)를 다음과 같이 세
+        행렬의 곱으로 쪼개는 선형대수학 기법입니다.</p>
       <div class="formula" style="text-align:center; margin: 15px 0; font-size: 1.2em;">
         $$ A = U \Sigma V^T $$
       </div>
       <ul style="line-height: 1.6;">
         <li>\(U\): \(m \times m\) 직교 행렬 (왼쪽 특이벡터 모음)</li>
-        <li>\(\Sigma\): \(m \times n\) 대각 행렬. 대각 성분 \(\sigma_i\)가 <strong>특이값(Singular Value)</strong>이며 큰 순서대로(\(\sigma_1 \ge \sigma_2 \ge \dots\)) 정렬됩니다. 특이값이 클수록 이미지에서 더 '중요한 패턴'임을 뜻합니다.</li>
+        <li>\(\Sigma\): \(m \times n\) 대각 행렬. 대각 성분 \(\sigma_i\)가 <strong>특이값(Singular Value)</strong>이며 큰
+          순서대로(\(\sigma_1 \ge \sigma_2 \ge \dots\)) 정렬됩니다. 특이값이 클수록 이미지에서 더 '중요한 패턴'임을 뜻합니다.</li>
         <li>\(V^T\): \(n \times n\) 직교 행렬 (오른쪽 특이벡터 모음)</li>
       </ul>
-      
+
       <h4 style="margin-top: 20px; color: #00ffbb;">💡 Truncated SVD (이미지 압축)</h4>
-      <p>이미지의 자잘한 디테일(노이즈)을 버리고 핵심적인 형태만 남기기 위해, 상위 \(k\)개의 가장 큰 특이값만 남기고 나머지를 잘라냅니다. 이를 수식으로 전개하면 <strong>여러 개의 뼈대 이미지(Rank-1 행렬)들을 겹겹이 더하는 형태</strong>가 됩니다.</p>
+      <p>이미지의 자잘한 디테일(노이즈)을 버리고 핵심적인 형태만 남기기 위해, 상위 \(k\)개의 가장 큰 특이값만 남기고 나머지를 잘라냅니다. 이를 수식으로 전개하면 <strong>여러 개의 뼈대
+          이미지(Rank-1 행렬)들을 겹겹이 더하는 형태</strong>가 됩니다.</p>
       <div class="formula" style="text-align:center; margin: 15px 0; font-size: 1.2em;">
         $$ A \approx A_k = \sum_{i=1}^{k} \sigma_i u_i v_i^T $$
       </div>
-      <p>이 시각화 도구의 로딩 화면에서 보여주는 연산 시뮬레이션은, 이 \(\sigma_i u_i v_i^T\) (가장 지배적인 형태의 뼈대 이미지)를 <strong>거듭제곱법(Power Iteration)</strong>을 통해 수학적으로 찾아나가는 과정을 직관적으로 보여주는 것입니다.</p>
+      <p>이 시각화 도구의 로딩 화면에서 보여주는 연산 시뮬레이션은, 이 \(\sigma_i u_i v_i^T\) (가장 지배적인 형태의 뼈대 이미지)를 <strong>거듭제곱법(Power
+          Iteration)</strong>을 통해 수학적으로 찾아나가는 과정을 직관적으로 보여주는 것입니다.</p>
     </div>
   </section>
 
@@ -215,5 +223,6 @@
   <!-- script 끝 -->
 </body>
 <!-- body 끝 -->
+
 </html>
 <!-- 문서 끝 -->
