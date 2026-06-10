@@ -40,9 +40,31 @@ let imageHeight = 0;
 // SVD library 로딩 시작.
 await loadSVDLibrary();
 
+// 최대 크기 입력 한계 동적 조절 함수.
+function updateMaxSizeLimit() {
+  if (!sourceImage) return;
+  // 이미지의 가로/세로 중 긴 변의 길이.
+  const imgMaxDim = Math.max(sourceImage.width, sourceImage.height);
+  // 절대 최대값인 1000과 이미지 크기 중 작은 값을 최대 한계로 설정.
+  const allowedMax = Math.min(1000, imgMaxDim);
+  
+  // HTML input/slider max 속성 업데이트.
+  maxSizeInput.max = allowedMax;
+  maxSizeSlider.max = allowedMax;
+  
+  // 현재 설정된 값이 새로운 최대값보다 크다면 자동 조절.
+  let currentValue = Number(maxSizeInput.value);
+  if (currentValue > allowedMax) {
+    maxSizeInput.value = allowedMax;
+    maxSizeSlider.value = allowedMax;
+  }
+}
+
 // 기본 이미지(svd_icon.png) 자동 로드
 try {
   sourceImage = await loadImageFromUrl("svd_icon.png");
+  // 이미지 로드 후 최대 크기 제한 업데이트
+  updateMaxSizeLimit();
   drawInputImageAndMakeMatrix();
   updateRunButton();
   if (libraryReady) {
@@ -61,6 +83,8 @@ imageInput.addEventListener("change", async (event) => {
 
   // 이미지 파일 로딩.
   sourceImage = await loadImageFromFile(file);
+  // 이미지 로드 후 최대 크기 제한 업데이트
+  updateMaxSizeLimit();
   // Canvas 출력과 행렬 생성.
   drawInputImageAndMakeMatrix();
   // 실행 버튼 상태 갱신.

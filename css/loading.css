@@ -1,0 +1,293 @@
+﻿/* ===== 로딩 오버레이 애니메이션 ===== */
+.loading-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(18, 18, 18, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 4vw;
+  box-sizing: border-box;
+  overflow: hidden;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.loading-overlay.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.spinner-wrapper {
+  position: relative;
+  width: 15vh;
+  height: 15vh;
+  min-width: 100px;
+  min-height: 100px;
+  max-width: 180px;
+  max-height: 180px;
+  margin-bottom: 2vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-icon {
+  width: 75%;
+  height: 75%;
+  border-radius: 50%;
+  animation: breath 2s infinite ease-in-out;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 187, 0.3));
+}
+
+.spinner-wrapper::before,
+.spinner-wrapper::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 3px solid transparent;
+}
+
+.spinner-wrapper::before {
+  border-top-color: #00ffbb;
+  border-right-color: rgba(0, 255, 187, 0.2);
+  animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+.spinner-wrapper::after {
+  border-bottom-color: #60ffc2;
+  border-left-color: rgba(96, 255, 194, 0.2);
+  animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite reverse;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes breath {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; filter: drop-shadow(0 0 20px rgba(0, 255, 187, 0.6)); }
+}
+
+.loading-overlay p {
+  color: #00ffbb;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  white-space: normal;
+  word-break: keep-all;
+  text-align: center;
+  max-width: 90vw;
+  line-height: 1.5;
+  animation: pulse-text 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* ===== 오버레이 3단 레이아웃 및 스캐너 효과 ===== */
+.loading-content-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  width: 100%;
+  max-width: 1200px;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+.loading-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.loading-side-card {
+  background: #2c2c2c;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 25vw;
+  min-width: 200px;
+  max-width: 300px;
+  max-height: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.loading-card-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: #00ffbb;
+  text-align: center;
+}
+
+.scanner-wrapper {
+  position: relative;
+  width: 100%;
+  border: 1px solid #555;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #1a1a1a;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.scanner-wrapper canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+.scanner-grid {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    linear-gradient(rgba(0, 255, 187, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 187, 0.2) 1px, transparent 1px);
+  background-size: 20px 20px;
+  z-index: 10;
+  opacity: 0.5;
+  animation: grid-pulse 1s infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes grid-pulse {
+  0% { opacity: 0.2; }
+  100% { opacity: 0.6; }
+}
+
+.scanner-line {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: #00ffbb;
+  box-shadow: 0 0 10px #00ffbb, 0 0 20px #00ffbb;
+  z-index: 20;
+  animation: scan-move 2s infinite linear;
+  pointer-events: none;
+}
+
+@keyframes scan-move {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.loading-data-log {
+  width: 100%;
+  max-width: 1000px;
+  height: 20vh;
+  min-height: 80px;
+  max-height: 150px;
+  margin-top: 3vh;
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 12px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  color: #60ffc2;
+  overflow-y: auto;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);
+  line-height: 1.4;
+}
+
+.loading-data-log div {
+  margin-bottom: 4px;
+  opacity: 0.8;
+}
+
+/* ===== 반응형 오버레이 최적화 ===== */
+@media (max-width: 800px) {
+  .loading-content-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    max-height: 50vh;
+    position: relative;
+  }
+  .loading-side-card {
+    width: 48%;
+    max-width: none;
+    flex: 1;
+    min-height: 0;
+    padding: 6px;
+    margin: 0;
+    justify-content: center;
+  }
+  .loading-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 50;
+    background: radial-gradient(circle, rgba(18,18,18,0.95) 40%, transparent 80%);
+    padding: 10px 20px;
+    width: max-content;
+  }
+  .spinner-wrapper {
+    margin: 0 0 8px 0;
+    width: 12vw;
+    height: 12vw;
+    min-width: 50px;
+    min-height: 50px;
+    max-height: 80px;
+    max-width: 80px;
+  }
+  .loading-overlay p {
+    font-size: 13px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .loading-card-title {
+    margin-bottom: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .loading-data-log {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    max-height: 25vh;
+    margin-top: 2vh;
+    font-size: 11px;
+    padding: 8px;
+  }
+}
+
+@media (max-height: 700px) and (min-width: 801px) {
+  .loading-overlay { padding: 2vh 2vw; }
+  .loading-content-row { gap: 2vw; flex: 1; min-height: 0; }
+  .loading-side-card { padding: 8px; flex: 1; min-height: 0; }
+  .loading-card-title { margin-bottom: 4px; font-size: 13px; }
+  .spinner-wrapper { width: 15vh; height: 15vh; min-width: 60px; min-height: 60px; }
+  .loading-data-log { flex: 1; min-height: 0; height: auto; max-height: 20vh; margin-top: 1vh; }
+}
