@@ -512,3 +512,29 @@ th {
     padding: 14px;
   }
 }
+
+/* ===== 다크 테마 커스텀 스크롤바 ===== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #1f1f1f;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00ffbb;
+}
+
+/* 모바일 화면에서 표 헤더 자동 줄바꿈 허용 (너비 축소) */
+@media (max-width: 800px) {
+  th {
+    white-space: normal;
+    word-break: keep-all;
+    min-width: 80px; /* 너무 좁아지지 않게 방어 */
+  }
+}

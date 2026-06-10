@@ -189,12 +189,26 @@ kInput.addEventListener("keydown", (e) => {
   }
 });
 
+// 실시간 타이핑 시 입력창 너비 자동 조절 (입력한 글자 수에 맞춰 늘어나게)
+kInput.addEventListener("input", resizeKInput);
+
+// 입력창 너비 자동 조절 함수
+function resizeKInput() {
+  // 170px를 최소 너비로 유지하고, 글자 수에 비례하여 늘립니다. (여백 고려하여 +3ch)
+  // CSS에 max-width: 100%가 적용되어 있으므로 섹션 밖을 벗어나지 않습니다.
+  kInput.style.width = `max(170px, ${kInput.value.length + 3}ch)`;
+}
+
+// 페이지 로드 시 초기 너비 설정
+resizeKInput();
+
 // k 입력창 내용 자동 정리 함수.
 function formatKInput() {
   try {
     const maxRank = (imageWidth && imageHeight) ? Math.min(imageWidth, imageHeight) : Infinity;
     const kValues = parseKValues(kInput.value, maxRank);
     kInput.value = kValues.join(", ");
+    resizeKInput(); // 정리 후 너비 재조정
   } catch (error) {
     // 유효한 숫자가 하나도 없어서 발생하는 에러 등은 무시 (실행 버튼 누를 때 검증됨)
   }
@@ -673,6 +687,56 @@ function drawMetricPlot(metrics) {
     { min: 0, max: 100, ticks: yTicks }
   );
 
+  // 라벨 겹침 방지를 위한 기록 배열
+  const drawnLabels = [];
+
+  // 겹침 방지 라벨 그리기 함수
+  function drawAvoidCollision(text, x, y, color, shiftDir) {
+    ctx.fillStyle = color;
+    const wText = ctx.measureText(text).width;
+    
+    // 폰트 크기가 11px이므로 줄간격을 105%로 설정 (11 * 1.05 = 11.55)
+    const hText = 11; 
+    const shiftAmount = 11.55; 
+    
+    // shiftDir: 1 (아래로 회피, textBaseline="top"), -1 (위로 회피, textBaseline="bottom")
+    ctx.textBaseline = shiftDir === 1 ? "top" : "bottom";
+    
+    let tryY = shiftDir === 1 ? y + 6 : y - 6;
+    let collision = true;
+    let attempts = 0;
+    
+    while(collision && attempts < 15) {
+      collision = false;
+      const box = {
+        left: x - wText/2 - 2,
+        right: x + wText/2 + 2,
+        top: shiftDir === 1 ? tryY : tryY - hText,
+        bottom: shiftDir === 1 ? tryY + hText : tryY
+      };
+      
+      for (const other of drawnLabels) {
+        if (!(box.right <= other.left || box.left >= other.right || box.bottom <= other.top || box.top >= other.bottom)) {
+          collision = true;
+          break;
+        }
+      }
+      
+      if (collision) {
+        tryY += shiftDir * shiftAmount;
+        attempts++;
+      }
+    }
+    
+    ctx.fillText(text, x, tryY);
+    drawnLabels.push({
+      left: x - wText/2 - 2,
+      right: x + wText/2 + 2,
+      top: shiftDir === 1 ? tryY : tryY - hText,
+      bottom: shiftDir === 1 ? tryY + hText : tryY
+    });
+  }
+
   // retained energy 실선 그리기.
   ctx.strokeStyle = "#00ffbb";
   ctx.beginPath();
@@ -686,18 +750,20 @@ function drawMetricPlot(metrics) {
   ctx.stroke();
 
   // retained energy 점(dot) 및 값 텍스트 표시
-  ctx.fillStyle = "#00ffbb";
   ctx.font = "11px Roboto, Arial";
   ctx.textAlign = "center";
-  ctx.textBaseline = "bottom";
   metrics.forEach(m => {
     const x = margin.left + (m.k / maxK) * plotW;
     const y = margin.top + plotH - m.retainedEnergy * plotH;
+    
+    // 점 그리기
+    ctx.fillStyle = "#00ffbb";
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, Math.PI * 2);
     ctx.fill();
-    // 텍스트 출력 (점보다 살짝 위에)
-    ctx.fillText(`k=${m.k} (${(m.retainedEnergy * 100).toFixed(1)}%)`, x, y - 6);
+    
+    // 겹침 방지 텍스트 (위쪽에 있으므로 아래로 회피: shiftDir = 1)
+    drawAvoidCollision(`k=${m.k} (${(m.retainedEnergy * 100).toFixed(1)}%)`, x, y, "#00ffbb", 1);
   });
 
   // relative error 점선 그리기.
@@ -714,18 +780,20 @@ function drawMetricPlot(metrics) {
   ctx.setLineDash([]);
 
   // relative error 점(dot) 및 값 텍스트 표시
-  ctx.fillStyle = "#ff66b2";
   ctx.font = "11px Roboto, Arial";
   ctx.textAlign = "center";
-  ctx.textBaseline = "bottom";
   metrics.forEach(m => {
     const x = margin.left + (m.k / maxK) * plotW;
     const y = margin.top + plotH - m.relativeError * plotH;
+    
+    // 점 그리기
+    ctx.fillStyle = "#ff66b2";
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, Math.PI * 2);
     ctx.fill();
-    // 텍스트 출력 (점보다 살짝 위에)
-    ctx.fillText(`k=${m.k} (${(m.relativeError * 100).toFixed(1)}%)`, x, y - 6);
+    
+    // 겹침 방지 텍스트 (아래쪽에 있으므로 위로 회피: shiftDir = -1)
+    drawAvoidCollision(`k=${m.k} (${(m.relativeError * 100).toFixed(1)}%)`, x, y, "#ff66b2", -1);
   });
 
   // 범례 배경 박스 (우측 상단에 배치하여 데이터 선과 겹침 방지)
@@ -936,7 +1004,7 @@ function renderMetricTable(metrics, originalParams) {
           <th>Retained Energy</th>
           <th>Relative Error</th>
           <th>Stored Params</th>
-          <th>Stored / Original</th>
+          <th>Stored&nbsp;/ Original</th>
           <th>Saving Ratio</th>
         </tr>
       </thead>
